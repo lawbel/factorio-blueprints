@@ -1,0 +1,29 @@
+cabal-version: 3.0
+name: factorio-blueprints
+version: 0.1.0.0
+synopsis: Converts images into pixel-art blueprints for the game Factorio
+license: BSD-3-Clause
+license-file: LICENSE
+author: Lawrence Bell
+build-type: Simple
+
+extra-doc-files:
+    , CHANGELOG.md
+    , README.md
+
+common warnings
+    ghc-options: -Wall
+
+common language-options
+    default-language: Haskell2010
+    default-extensions:
+        , ImportQualifiedPost
+        , LambdaCase
+
+library
+    import: warnings, language-options
+    exposed-modules:
+        -- TODO
+    build-depends:
+        , base
+    hs-source-dirs: src

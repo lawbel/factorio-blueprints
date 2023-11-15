@@ -1,0 +1,11 @@
+# haskell
+dist-newstyle/
+
+# nix
+result
+
+# editors
+.vscode/
+
+# direnv
+.direnv/

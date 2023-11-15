@@ -1,0 +1,7 @@
+indentation: 4
+import-export-style: leading
+record-brace-space: True
+function-arrows: leading
+haddock-style: single-line
+column-limit: 80
+in-style: left-align
