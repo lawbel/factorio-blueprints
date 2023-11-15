@@ -3,25 +3,30 @@
     Converts images into pixel-art blueprints for the game Factorio
   '';
 
+  # we rely on "haskell-flake" to do the heavy lifting for the nix config
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     flake-parts.url = "github:hercules-ci/flake-parts";
     haskell-flake.url = "github:srid/haskell-flake";
   };
 
-  # we rely on "haskell-flake" to do the heavy lifting for the nix config
-  outputs = inputs@{ self, nixpkgs, flake-parts, haskell-flake, ... }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = nixpkgs.lib.systems.flakeExposed;
-      imports = [haskell-flake.flakeModule];
-      perSystem = { self', pkgs, ... }: {
-        # this part needs specifying as the package name
-        packages.default = self'.packages.factorio-blueprints;
-        haskellProjects.default = {
-          devShell.tools = hsPkgs: {
-            inherit (hsPkgs) fourmolu;
-          };
+  outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } {
+    systems = [ "x86_64-linux" ];
+    imports = [ inputs.haskell-flake.flakeModule ];
+
+    perSystem = { self', pkgs, config, ... }: {
+      haskellProjects.default = {
+        basePackages = pkgs.haskell.packages.ghc947;
+        devShell.tools = hsPkgs: {
+          inherit (hsPkgs) fourmolu;
         };
+        # don't auto-wire up devShells, as we manually specify them below
+        autoWire = [ "packages" "apps" "checks" ];
+      };
+
+      devShells.default = pkgs.mkShell {
+        inputsFrom = [ config.haskellProjects.default.outputs.devShell ];
       };
     };
+  };
 }
