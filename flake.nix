@@ -15,6 +15,8 @@
     imports = [ inputs.haskell-flake.flakeModule ];
 
     perSystem = { self', pkgs, config, ... }: {
+      packages.default = self'.packages.factorio-blueprints;
+
       haskellProjects.default = {
         basePackages = pkgs.haskell.packages.ghc947;
         devShell.tools = hsPkgs: {
