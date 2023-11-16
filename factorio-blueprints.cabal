@@ -36,3 +36,16 @@ library
         , text ^>= 2.0.2
         , zlib ^>= 0.6.3
     hs-source-dirs: source
+
+test-suite tests
+    import: warnings, language-options
+    build-depends:
+        , factorio-blueprints
+        , base
+        , tasty ^>= 1.5
+        , tasty-hunit ^>= 0.10.1
+        , tasty-quickcheck ^>= 0.10.3
+        , QuickCheck ^>= 2.14.3
+    main-is: Spec.hs
+    type: exitcode-stdio-1.0
+    hs-source-dirs: test
