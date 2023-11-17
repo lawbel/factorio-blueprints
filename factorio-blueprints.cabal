@@ -24,6 +24,7 @@ library
     import: warnings, language-options
     exposed-modules:
         , Codec.Factorio
+        , Codec.Factorio.Vanilla
     other-modules:
         , Codec.Factorio.Helpers
     build-depends:
