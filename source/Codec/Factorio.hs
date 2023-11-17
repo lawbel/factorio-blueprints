@@ -77,7 +77,7 @@ imageToBlueprint proxy =
 -- | Convert an image into a JSON value. Each pixel will be assigned a
 -- suitable tile from the given 'Palette' by approximating its colour value.
 imageToJson :: Palette p => Proxy p -> Image PixelRGB8 -> Json.Object
-imageToJson (Proxy @p) image =
+imageToJson proxy image =
     Json.Map.fromList
         [ "entities" .= do
             (num, (entity, pos)) <- zip [1..] entities
@@ -95,7 +95,7 @@ imageToJson (Proxy @p) image =
         x <- [0 .. Picture.imageWidth image - 1]
         y <- [0 .. Picture.imageHeight image - 1]
         let pixel = Picture.pixelAt image x y
-        let (cat, json) = pixelToJson (Proxy @p) pixel
+        let (cat, json) = pixelToJson proxy pixel
         let pos = Json.object ["x" .= intToFloat x, "y" .= intToFloat y]
         pure $ case cat of
             Entity -> Left (json, pos)
