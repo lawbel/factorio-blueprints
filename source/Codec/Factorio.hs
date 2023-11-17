@@ -70,8 +70,9 @@ class Palette p where
 
 -- | Main wrapper function - turns a binary image into a blueprint
 -- string suitable for using in-game.
-imageToBlueprint :: Palette p => p -> ByteString -> Text
-imageToBlueprint = error "TODO"
+imageToBlueprint :: Palette p => Proxy p -> Image PixelRGB8 -> Text
+imageToBlueprint proxy =
+    imageToJson proxy >>> Json.Object >>> jsonToBlueprint 0
 
 -- | Convert an image into a JSON value. Each pixel will be assigned a
 -- suitable tile from the given 'Palette' by approximating its colour value.
