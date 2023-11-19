@@ -17,6 +17,8 @@ module Codec.Factorio
     , Category(..)
       -- * Errors
     , DecodeError(..)
+      -- * Utilities
+    , printBlueprint
     ) where
 
 import Codec.Compression.Zlib qualified as ZLib
