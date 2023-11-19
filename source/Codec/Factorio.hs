@@ -8,11 +8,10 @@
 
 module Codec.Factorio
     ( -- * main interface
-      imageToBlueprint
-      -- * helper functions
-    , imageToJson
+      imageToJson
     , jsonToBlueprint
     , blueprintToJson
+    , previewJson
       -- * Palette class
     , Palette(..)
     , Category(..)
@@ -25,18 +24,24 @@ import Codec.Compression.Zlib.Internal (DecompressError)
 import Codec.Factorio.Helpers (decompress)
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
+import Codec.Picture.Types qualified as Picture.Type
 import Control.Arrow ((>>>))
 import Control.Exception (Exception, throw)
+import Control.Lens ((^?!))
+import Control.Lens qualified as Lens
+import Control.Monad.ST (runST)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Json
 import Data.Aeson.Encode.Pretty qualified as Json.Pretty
 import Data.Aeson.KeyMap qualified as Json.Map
+import Data.Aeson.Lens (_Number, _String, _Object, _Array)
 import Data.Bifunctor (first)
-import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Base64 qualified as Base64
 import Data.Char qualified as Char
 import Data.Either (partitionEithers)
+import Data.Foldable (for_)
 import Data.Function ((&))
+import Data.Maybe (fromJust)
 import Data.Proxy (Proxy(..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -66,19 +71,14 @@ class Palette p where
     colour :: Object p -> PixelRGB8
     toJson :: Object p -> Json.Object
     categorize :: Object p -> Category
+    search :: Text -> Maybe (Object p)
     nearest :: PixelRGB8 -> Object p
-
--- | Main wrapper function - turns a binary image into a blueprint
--- string suitable for using in-game.
-imageToBlueprint :: Palette p => Proxy p -> Image PixelRGB8 -> Text
-imageToBlueprint proxy =
-    imageToJson proxy >>> Json.Object >>> jsonToBlueprint 0
 
 -- | Convert an image into a JSON value. Each pixel will be assigned a
 -- suitable tile from the given 'Palette' by approximating its colour value.
-imageToJson :: Palette p => Proxy p -> Image PixelRGB8 -> Json.Object
-imageToJson proxy image =
-    Json.Map.fromList
+imageToJson :: Palette p => Proxy p -> Image PixelRGB8 -> Json.Value
+imageToJson proxy image = Json.object
+    [ "blueprint" .= Json.object
         [ "entities" .= do
             (num, (entity, pos)) <- zip [1..] entities
             let position = Json.Map.singleton "position" pos
@@ -87,7 +87,8 @@ imageToJson proxy image =
         , "tiles" .= do
             (tile, pos) <- tiles
             let position = Json.Map.singleton "position" pos
-            pure $ position <> tile ]
+            pure $ position <> tile
+        , "item" .= Json.String "blueprint" ] ]
   where
     intToFloat = fromIntegral @Int @Float
     intToNumber = fromIntegral @Int >>> Json.Number
@@ -100,6 +101,29 @@ imageToJson proxy image =
         pure $ case cat of
             Entity -> Left (json, pos)
             Tile -> Right (json, pos)
+
+previewJson :: Palette p => Proxy p -> Json.Value -> Image PixelRGB8
+previewJson (Proxy @p) value = runST $ do
+    canvas <- Picture.Type.newMutableImage width height
+    for_ entities $ \entity -> do
+        let get axis = round (entity ^?! coord axis)
+        Picture.Type.writePixel canvas (get "x") (get "y") (rgb entity)
+    for_ tiles $ \tile -> do
+        let get axis = round (tile ^?! coord axis)
+        Picture.Type.writePixel canvas (get "x") (get "y") (rgb tile)
+    Picture.Type.unsafeFreezeImage canvas
+  where
+    entities = value ^?! _Object . Lens.ix "entities" . _Array
+    tiles = value ^?! _Object . Lens.ix "tiles" . _Array
+    width = largest "x" entities `max` largest "x" tiles
+    height = largest "y" entities `max` largest "y" tiles
+    coord axis = Lens.ix "position" . Lens.ix axis . _Number
+    largest axis =
+        let coords = Lens.traversed . coord axis
+        in  Lens.maximumOf coords >>> maybe 0 round
+    rgb obj =
+        let name' = obj ^?! Lens.ix "name" . _String
+        in  colour $ fromJust $ search @p name'
 
 pixelToJson :: Palette p => Proxy p -> PixelRGB8 -> (Category, Json.Object)
 pixelToJson (Proxy @p) col = (categorize @p object, toJson object)

@@ -34,6 +34,8 @@ library
         , base64 ^>= 0.4.2
         , bytestring ^>= 0.11.5
         , JuicyPixels ^>= 3.3.8
+        , lens ^>= 5.2.3
+        , lens-aeson ^>= 1.2.3
         , text ^>= 2.0.2
         , zlib ^>= 0.6.3
     hs-source-dirs: source
@@ -54,7 +56,10 @@ test-suite tests
 executable blueprints
     import: warnings, language-options
     build-depends:
+        , aeson
+        , aeson-pretty
         , base
+        , bytestring
         , factorio-blueprints
         , file-io ^>= 0.1.0
         , filepath ^>= 1.4.100

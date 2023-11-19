@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Codec.Factorio.Vanilla
     ( Flooring
@@ -31,6 +32,13 @@ instance Palette Flooring where
         HazardConcrete -> "hazard-concrete"
         Refined -> "refined-concrete"
         HazardRefined -> "refined-hazard-concrete"
+    search = \case
+        "stone-path" -> Just Stone
+        "concrete" -> Just Concrete
+        "hazard-concrete" -> Just HazardConcrete
+        "refined-concrete" -> Just Refined
+        "refined-hazard-concrete" -> Just HazardRefined
+        _ -> Nothing
     colour = \case
         Stone -> Picture.PixelRGB8 0x52 0x51 0x4A
         Concrete -> Picture.PixelRGB8 0x3A 0x3D 0x3A
@@ -50,6 +58,10 @@ each withFloor wall gate = \case
 instance Palette All where
     type Object All = Each
     name = each Factorio.name "stone-wall" "gate"
+    search = \case
+        "stone-wall" -> Just Wall
+        "gate" -> Just Gate
+        txt -> MkFloor <$> Factorio.search @Flooring txt
     colour =
         let wall = Picture.PixelRGB8 0xCE 0xDB 0xCE
             gate = Picture.PixelRGB8 0x7B 0x7D 0x7B
