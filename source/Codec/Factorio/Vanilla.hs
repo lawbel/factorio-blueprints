@@ -62,8 +62,14 @@ instance Palette All where
             gate = Json.Map.fromList
                 [ "name" .= Factorio.name Gate
                 , "direction" .= Json.Number 1 ]
-        in  each Factorio.asJson wall gate
-    categorize = each Factorio.categorize Factorio.Entity Factorio.Entity
+        in  \case
+                MkFloor flooring -> Factorio.asJson flooring
+                Wall -> wall
+                Gate -> gate
+    categorize = \case
+        MkFloor flooring -> Factorio.categorize flooring
+        Wall -> Factorio.Entity
+        Gate -> Factorio.Entity
     nearest = closestTo Factorio.colour $
         Wall : Gate : do
             flooring <- [minBound .. maxBound]
@@ -82,9 +88,3 @@ allColours = Map.fromList (wall : gate : assocs)
     wall = (Wall, Picture.PixelRGB8 0xCE 0xDB 0xCE)
     gate = (Gate, Picture.PixelRGB8 0x7B 0x7D 0x7B)
     assocs = first MkFloor <$> Map.toList floorColours
-
-each :: (Floor -> a) -> a -> a -> Each -> a
-each withFloor wall gate = \case
-    MkFloor flooring -> withFloor flooring
-    Wall -> wall
-    Gate -> gate
