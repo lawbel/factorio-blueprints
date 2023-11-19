@@ -130,8 +130,8 @@ pixelToJson (Proxy @p) col = (categorize @p object, toJson object)
   where
     object = nearest col
 
--- | Internal helper function - converts from JSON to a string, taking
--- a version number to include in the output.
+-- | Converts from JSON to a string, taking a version number to include
+-- in the output.
 --
 -- Version number should be in the range 0-9 inclusive, otherwise this
 -- function may throw an error.
@@ -147,8 +147,7 @@ jsonToBlueprint version =
         { ZLib.compressMethod = ZLib.deflateMethod
         , ZLib.compressLevel = ZLib.compressionLevel 9 }
 
--- | Internal helper function - converts from a string to JSON. Inverse
--- to 'jsonToBlueprint':
+-- | Converts from a string to JSON. Inverse to 'jsonToBlueprint':
 --
 -- prop> \obj -> blueprintToJson (jsonToBlueprint 0 obj) == Right obj
 blueprintToJson :: Text -> Either DecodeError Json.Value
