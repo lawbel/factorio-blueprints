@@ -27,7 +27,7 @@ data Each = MkFloor Floor | Wall | Gate
 instance Palette Flooring where
     type Object Flooring = Floor
     name = \case
-        Stone -> "stone-brick"
+        Stone -> "stone-path"
         Concrete -> "concrete"
         Refined -> "refined-concrete"
     search = \case
@@ -63,7 +63,7 @@ instance Palette All where
     toJson =
         let wall = Json.Map.fromList ["name" .= Factorio.name Wall]
             gate = Json.Map.fromList
-                [ "name" .= Factorio.name Wall
+                [ "name" .= Factorio.name Gate
                 , "direction" .= Json.Number 1 ]
         in  each Factorio.toJson wall gate
     categorize = each Factorio.categorize Factorio.Entity Factorio.Entity
