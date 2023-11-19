@@ -37,7 +37,7 @@ import Text.Read (readEither)
 data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data Set = Flooring | All
+data Set = Floor | All
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Resize = Width Int | Height Int | Scale Float
@@ -163,7 +163,7 @@ applyResize resize image = case resize of
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
-    Flooring -> cont $ Proxy @Vanilla.Flooring
+    Floor -> cont $ Proxy @Vanilla.Flooring
     All -> cont $ Proxy @Vanilla.All
 
 printAs :: Json.Value -> Format -> IO ()
