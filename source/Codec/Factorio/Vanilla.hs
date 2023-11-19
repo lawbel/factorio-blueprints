@@ -19,10 +19,11 @@ import Data.Aeson.KeyMap qualified as Json.Map
 
 data Flooring
 data Floor = Stone | Concrete | Refined
-    deriving (Bounded, Enum, Eq, Ord, Show)
+    deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data All
 data Each = MkFloor Floor | Wall | Gate
+    deriving (Eq, Ord, Read, Show)
 
 instance Palette Flooring where
     type Object Flooring = Floor
