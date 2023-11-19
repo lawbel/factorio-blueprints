@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Codec.Factorio.Helpers
     ( decompress
@@ -36,11 +37,18 @@ decompress bytes =
         ZLib.Internal.zlibFormat
         ZLib.defaultDecompressParams
 
-distance :: PixelRGB8 -> PixelRGB8 -> Word8
+distance :: PixelRGB8 -> PixelRGB8 -> Float
 distance (Picture.PixelRGB8 r1 g1 b1) (Picture.PixelRGB8 r2 g2 b2) =
-    square (r2 - r1) + square (g2 - g1) + square (b2 - b1)
+    sqrt $ sum
+        [ square (w2f r2 - w2f r1)
+        , square (w2f g2 - w2f g1)
+        , square (w2f b2 - w2f b1) ]
   where
     square x = x * x
+    -- Very important not to calculate with Word8 - if you do, you
+    -- may easily overflow and get nonsense results. So our first step
+    -- is to convert to Float.
+    w2f = fromIntegral @Word8 @Float
 
 closestTo :: (a -> PixelRGB8) -> [a] -> PixelRGB8 -> a
 closestTo toCol options col =
