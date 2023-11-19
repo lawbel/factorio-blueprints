@@ -30,6 +30,7 @@ import System.File.OsPath qualified as File.OsPath
 import System.OsPath (OsPath)
 import System.OsPath qualified as OsPath
 import Text.Read (readEither)
+import Control.Applicative (asum)
 
 data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
@@ -40,6 +41,7 @@ data Set = Flooring | All
 data Args = MkArgs
     { image :: OsPath
     , set :: Set
+    , dither :: Bool
     , output :: Maybe Format
     , preview :: Maybe OsPath }
     deriving (Eq, Ord, Show)
@@ -64,7 +66,8 @@ parseArgs = do
         [ Opt.long "set"
         , Opt.short 's'
         , Opt.metavar "SET"
-        , Opt.help "should be one of {flooring, all}"
+        , Opt.help
+            "the tileset/palette to use - should be one of {flooring, all}"
         , Opt.value All ]
     let readJust = readTitle >>> fmap Just
     output <- Opt.option (Opt.eitherReader readJust) $ mconcat
@@ -74,7 +77,15 @@ parseArgs = do
         , Opt.help
             "print the blueprint in the given format - one of {str, json}"
         , Opt.value Nothing ]
-    pure $ MkArgs{image, set, output, preview}
+    dither <- asum
+        [ Opt.flag' True $ mconcat
+            [ Opt.long "dither"
+            , Opt.help "enable dithering (the default)" ]
+        , Opt.flag' False $ mconcat
+            [ Opt.long "no-dither"
+            , Opt.help "disable dithering" ]
+        , pure True ]
+    pure $ MkArgs{image, set, output, preview, dither}
 
 encodeOsPath :: String -> Either String OsPath
 encodeOsPath = OsPath.encodeUtf >>> first show
@@ -97,18 +108,17 @@ main = Opt.execParser opts >>= run
         , Opt.progDesc "Generate a Factorio Blueprint from a given image" ]
 
 run :: Args -> IO ()
-run MkArgs{image, set, output, preview} = do
+run MkArgs{image, set, output, preview, dither} = do
     bytes <- File.OsPath.readFile' image
     case Picture.decodeImage bytes of
         Left err -> die err
         Right file -> withSet set $ \(Proxy @p) -> do
             let rgb = Picture.convertRGB8 file
-            let figure = Factorio.setPalette @p rgb
-            -- let quantized = Factorio.quantize figure
-            let dithered = Factorio.dither figure
-            let json = Factorio.toJson dithered
+            let process = if dither then Factorio.dither else Factorio.quantize
+            let processed = process $ Factorio.setPalette @p rgb
+            let json = Factorio.toJson processed
             for_ output $ printAs json
-            for_ preview $ writePreview dithered
+            for_ preview $ writePreview processed
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
