@@ -53,16 +53,24 @@ import Data.Text.Lazy.Builder qualified as Builder
 import Data.Text.Lazy.Encoding qualified as Text.Lazy.Encode
 import Data.Word (Word8)
 
+-- | All possible errors that can occur when decoding a blueprint string.
 data DecodeError
     = ZLibError DecompressError
+    -- ^ decompression error
     | Base64Error Text
+    -- ^ base-64 decoding error
     | JsonError Text
+    -- ^ json decoding error
     deriving stock (Eq, Show)
     deriving anyclass Exception
 
+-- | The possible categories of objects that can be used as part of a
+-- colour palette.
 data Category = Entity | Tile
     deriving stock (Bounded, Enum, Eq, Ord, Show)
 
+-- | A newtype wrapper around an 'Image', that allows tracking a type
+-- variable (usually a colour palette) together with the underlying image.
 newtype Figure p = MkFigure (Image PixelRGB8)
     deriving stock Eq
 
@@ -81,14 +89,20 @@ class Palette p where
     getName :: Text -> Maybe (Object p)
     getColour :: PixelRGB8 -> Maybe (Object p)
 
+-- | Wrap up an 'Image' into a 'Figure' - this is just a newtype wrapper
+-- (so has no runtime impact), but it allows us to keep track of the colour
+-- palette together with the source image.
 setPalette :: Palette p => Image PixelRGB8 -> Figure p
 setPalette = MkFigure
 
+-- | Perform colour-quantization on the given image, using the given
+-- colour 'Palette'.
 quantize :: Palette p => Figure p -> Figure p
 quantize (MkFigure @p image) = MkFigure $ Picture.pixelMap quant image
   where
     quant = nearest @p >>> colour
 
+-- | Implements Floyd-Steinberg dithering on the image.
 dither :: Palette p => Figure p -> Figure p
 dither (MkFigure @p image) = MkFigure $ runST $ do
     canvas <- Picture.Type.thawImage image
@@ -109,6 +123,7 @@ dither (MkFigure @p image) = MkFigure $ runST $ do
     height = Picture.imageHeight image
     inBounds x y = (0 <= x) && (x < width) && (0 <= y) && (y < height)
 
+-- | Helper function for manipulating colours.
 difference :: PixelRGB8 -> PixelRGB8 -> (Int, Int, Int)
 difference (Picture.PixelRGB8 r1 g1 b1) (Picture.PixelRGB8 r2 g2 b2) =
     ( w2i r1 - w2i r2
@@ -117,11 +132,13 @@ difference (Picture.PixelRGB8 r1 g1 b1) (Picture.PixelRGB8 r2 g2 b2) =
   where
     w2i = fromIntegral @Word8 @Int
 
+-- | Helper function for manipulating colours.
 scale :: Float -> (Int, Int, Int) -> (Int, Int, Int)
 scale factor (x, y, z) = (apply x, apply y, apply z)
   where
     apply = fromIntegral >>> (* factor) >>> round
 
+-- | Helper function for manipulating colours.
 add :: (Int, Int, Int) -> PixelRGB8 -> PixelRGB8
 add (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
     Picture.PixelRGB8
@@ -133,6 +150,8 @@ add (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
     i2w = min max8 >>> max 0 >>> fromIntegral @Int @Word8
     max8 = w2i $ maxBound @Word8
 
+-- | Take an image (perhaps after various processing steps earlier) and output
+-- it in the JSON format used for blueprints in-game.
 toJson :: Palette p => Figure p -> Json.Value
 toJson (MkFigure @p image) = Json.object
     [ "blueprint" .= Json.object
@@ -159,6 +178,7 @@ toJson (MkFigure @p image) = Json.object
             Entity -> Left (json, pos)
             Tile -> Right (json, pos)
 
+-- | Helper function for use in 'toJson'.
 pixelInfo :: Palette p => Proxy p -> PixelRGB8 -> (Category, Json.Object)
 pixelInfo (Proxy @p) col = (categorize object, asJson object)
   where
