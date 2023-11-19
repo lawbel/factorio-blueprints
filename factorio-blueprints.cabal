@@ -25,7 +25,6 @@ library
     exposed-modules:
         , Codec.Factorio
         , Codec.Factorio.Vanilla
-    other-modules:
         , Codec.Factorio.Helpers
     build-depends:
         , aeson ^>= 2.1.2
@@ -45,7 +44,9 @@ test-suite tests
     build-depends:
         , base
         , factorio-blueprints
+        , JuicyPixels
         , QuickCheck ^>= 2.14.3
+        , string-interpolate ^>= 0.3.2
         , tasty ^>= 1.5
         , tasty-hunit ^>= 0.10.1
         , tasty-quickcheck ^>= 0.10.3
