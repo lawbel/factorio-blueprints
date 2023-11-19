@@ -65,6 +65,7 @@ executable blueprints
         , file-io ^>= 0.1.0
         , filepath ^>= 1.4.100
         , JuicyPixels
+        , JuicyPixels-extra ^>= 0.6.0
         , optparse-applicative ^>= 0.18.1
         , text
     main-is: Main.hs

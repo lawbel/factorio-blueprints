@@ -11,7 +11,10 @@ module Main
 import Codec.Factorio (Figure, Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Vanilla qualified as Vanilla
+import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
+import Codec.Picture.Extra (scaleBilinear)
+import Control.Applicative (asum)
 import Control.Arrow ((>>>))
 import Data.Aeson qualified as Json
 import Data.Aeson.Encode.Pretty qualified as Json.Pretty
@@ -30,7 +33,6 @@ import System.File.OsPath qualified as File.OsPath
 import System.OsPath (OsPath)
 import System.OsPath qualified as OsPath
 import Text.Read (readEither)
-import Control.Applicative (asum)
 
 data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
@@ -38,12 +40,16 @@ data Format = Str | Json
 data Set = Flooring | All
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
+data Resize = Width Int | Height Int | Scale Float
+    deriving (Eq, Ord, Read, Show)
+
 data Args = MkArgs
     { image :: OsPath
     , set :: Set
     , dither :: Bool
     , output :: Maybe Format
-    , preview :: Maybe OsPath }
+    , preview :: Maybe OsPath
+    , resize :: Maybe Resize }
     deriving (Eq, Ord, Show)
 
 parseArgs :: Parser Args
@@ -64,7 +70,6 @@ parseArgs = do
         , Opt.value Nothing ]
     set <- Opt.option (Opt.eitherReader readTitle) $ mconcat
         [ Opt.long "set"
-        , Opt.short 's'
         , Opt.metavar "SET"
         , Opt.help
             "the tileset/palette to use - should be one of {flooring, all}"
@@ -85,7 +90,23 @@ parseArgs = do
             [ Opt.long "no-dither"
             , Opt.help "disable dithering" ]
         , pure True ]
-    pure $ MkArgs{image, set, output, preview, dither}
+    resize <- asum
+        [ fmap (Width >>> Just) $ Opt.option Opt.auto $ mconcat
+            [ Opt.long "width"
+            , Opt.metavar "INT"
+            , Opt.help "target width (in pixels) to resize the image to" ]
+        , fmap (Height >>> Just) $ Opt.option Opt.auto $ mconcat
+            [ Opt.long "height"
+            , Opt.metavar "INT"
+            , Opt.help "target height (in pixels) to resize the image to" ]
+        , fmap (Scale >>> Just) $ Opt.option Opt.auto $ mconcat
+            [ Opt.long "scale"
+            , Opt.metavar "FLOAT"
+            , Opt.help
+                "ratio to scale the image to - scale=1 means preserve \
+                \size, scale=0.5 means half scale, etc." ]
+        , pure Nothing ]
+    pure $ MkArgs{image, set, output, preview, dither, resize}
 
 encodeOsPath :: String -> Either String OsPath
 encodeOsPath = OsPath.encodeUtf >>> first show
@@ -108,17 +129,37 @@ main = Opt.execParser opts >>= run
         , Opt.progDesc "Generate a Factorio Blueprint from a given image" ]
 
 run :: Args -> IO ()
-run MkArgs{image, set, output, preview, dither} = do
+run MkArgs{image, set, output, preview, dither, resize} = do
     bytes <- File.OsPath.readFile' image
     case Picture.decodeImage bytes of
         Left err -> die err
         Right file -> withSet set $ \(Proxy @p) -> do
-            let rgb = Picture.convertRGB8 file
+            let sized = maybe id applyResize resize $ Picture.convertRGB8 file
             let process = if dither then Factorio.dither else Factorio.quantize
-            let processed = process $ Factorio.setPalette @p rgb
+            let processed = process $ Factorio.setPalette @p sized
             let json = Factorio.toJson processed
             for_ output $ printAs json
             for_ preview $ writePreview processed
+
+applyResize :: Resize -> Image PixelRGB8 -> Image PixelRGB8
+applyResize resize image = case resize of
+    Width widthNew ->
+        let scale = i2f widthNew / i2f widthOld
+            heightNew = f2i (scale * i2f heightOld)
+        in  scaleBilinear widthNew heightNew image
+    Height heightNew ->
+        let scale = i2f heightNew / i2f heightOld
+            widthNew = f2i (scale * i2f widthOld)
+        in  scaleBilinear widthNew heightNew image
+    Scale scale ->
+        let widthNew = f2i (scale * i2f widthOld)
+            heightNew = f2i (scale * i2f heightOld)
+        in  scaleBilinear widthNew heightNew image
+  where
+    widthOld = Picture.imageWidth image
+    heightOld = Picture.imageHeight image
+    i2f = fromIntegral @Int @Float
+    f2i = round @Float @Int
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
