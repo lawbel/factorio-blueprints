@@ -8,13 +8,16 @@
 
 module Codec.Factorio
     ( -- * main interface
-      imageToJson
-    , jsonToBlueprint
+      jsonToBlueprint
     , blueprintToJson
-    , previewJson
+    , setPalette
+    , quantize
+    , dither
+    , toJson
       -- * Palette class
     , Palette(..)
     , Category(..)
+    , Figure(..)
       -- * Errors
     , DecodeError(..)
       -- * Utilities
@@ -23,27 +26,24 @@ module Codec.Factorio
 
 import Codec.Compression.Zlib qualified as ZLib
 import Codec.Compression.Zlib.Internal (DecompressError)
-import Codec.Factorio.Helpers (decompress)
+import Codec.Factorio.Helpers (decompress, updatePixel)
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Types qualified as Picture.Type
 import Control.Arrow ((>>>))
 import Control.Exception (Exception, throw)
-import Control.Lens ((^?!))
-import Control.Lens qualified as Lens
+import Control.Monad (when)
 import Control.Monad.ST (runST)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Json
 import Data.Aeson.Encode.Pretty qualified as Json.Pretty
 import Data.Aeson.KeyMap qualified as Json.Map
-import Data.Aeson.Lens (_Number, _String, _Object, _Array)
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy.Base64 qualified as Base64
 import Data.Char qualified as Char
 import Data.Either (partitionEithers)
 import Data.Foldable (for_)
 import Data.Function ((&))
-import Data.Maybe (fromJust)
 import Data.Proxy (Proxy(..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -51,6 +51,7 @@ import Data.Text.IO qualified as Text.IO
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Builder
 import Data.Text.Lazy.Encoding qualified as Text.Lazy.Encode
+import Data.Word (Word8)
 
 data DecodeError
     = ZLibError DecompressError
@@ -62,6 +63,9 @@ data DecodeError
 data Category = Entity | Tile
     deriving stock (Bounded, Enum, Eq, Ord, Show)
 
+newtype Figure p = MkFigure (Image PixelRGB8)
+    deriving stock Eq
+
 -- | This typeclass allows flexibility in the tileset used for approximating
 -- pixels - there are some tileset instances provided out-of-the-box, but
 -- this can be extended as needed by library users.
@@ -71,15 +75,66 @@ class Palette p where
     type Object p = r | r -> p
     name :: Object p -> Text
     colour :: Object p -> PixelRGB8
-    toJson :: Object p -> Json.Object
+    asJson :: Object p -> Json.Object
     categorize :: Object p -> Category
-    search :: Text -> Maybe (Object p)
     nearest :: PixelRGB8 -> Object p
+    getName :: Text -> Maybe (Object p)
+    getColour :: PixelRGB8 -> Maybe (Object p)
 
--- | Convert an image into a JSON value. Each pixel will be assigned a
--- suitable tile from the given 'Palette' by approximating its colour value.
-imageToJson :: Palette p => Proxy p -> Image PixelRGB8 -> Json.Value
-imageToJson proxy image = Json.object
+setPalette :: Palette p => Image PixelRGB8 -> Figure p
+setPalette = MkFigure
+
+quantize :: Palette p => Figure p -> Figure p
+quantize (MkFigure @p image) = MkFigure $ Picture.pixelMap quant image
+  where
+    quant = nearest @p >>> colour
+
+dither :: Palette p => Figure p -> Figure p
+dither (MkFigure @p image) = MkFigure $ runST $ do
+    canvas <- Picture.Type.thawImage image
+    let update x y fn = when (inBounds x y) $ updatePixel canvas x y fn
+    for_ [0 .. height - 1] $ \y -> do
+        for_ [0 .. width - 1] $ \x -> do
+            oldPixel <- Picture.Type.readPixel canvas x y
+            let newPixel = colour $ nearest @p oldPixel
+            Picture.Type.writePixel canvas x y newPixel
+            let err = difference oldPixel newPixel
+            update (x + 1) y $ add $ scale (7/16) err
+            update (x - 1) (y + 1) $ add $ scale (3/16) err
+            update x (y + 1) $ add $ scale (5/16) err
+            update (x + 1) (y + 1) $ add $ scale (1/16) err
+    Picture.Type.unsafeFreezeImage canvas
+  where
+    width = Picture.imageWidth image
+    height = Picture.imageHeight image
+    inBounds x y = (0 <= x) && (x < width) && (0 <= y) && (y < height)
+
+difference :: PixelRGB8 -> PixelRGB8 -> (Int, Int, Int)
+difference (Picture.PixelRGB8 r1 g1 b1) (Picture.PixelRGB8 r2 g2 b2) =
+    ( w2i r1 - w2i r2
+    , w2i g1 - w2i g2
+    , w2i b1 - w2i b2 )
+  where
+    w2i = fromIntegral @Word8 @Int
+
+scale :: Float -> (Int, Int, Int) -> (Int, Int, Int)
+scale factor (x, y, z) = (apply x, apply y, apply z)
+  where
+    apply = fromIntegral >>> (* factor) >>> round
+
+add :: (Int, Int, Int) -> PixelRGB8 -> PixelRGB8
+add (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
+    Picture.PixelRGB8
+        (i2w $ r1 + w2i r2)
+        (i2w $ g1 + w2i g2)
+        (i2w $ b1 + w2i b2)
+  where
+    w2i = fromIntegral @Word8 @Int
+    i2w = min max8 >>> max 0 >>> fromIntegral @Int @Word8
+    max8 = w2i $ maxBound @Word8
+
+toJson :: Palette p => Figure p -> Json.Value
+toJson (MkFigure @p image) = Json.object
     [ "blueprint" .= Json.object
         [ "entities" .= do
             (num, (entity, pos)) <- zip [1..] entities
@@ -98,39 +153,18 @@ imageToJson proxy image = Json.object
         x <- [0 .. Picture.imageWidth image - 1]
         y <- [0 .. Picture.imageHeight image - 1]
         let pixel = Picture.pixelAt image x y
-        let (cat, json) = pixelToJson proxy pixel
+        let (cat, json) = pixelInfo (Proxy @p) pixel
         let pos = Json.object ["x" .= intToFloat x, "y" .= intToFloat y]
         pure $ case cat of
             Entity -> Left (json, pos)
             Tile -> Right (json, pos)
 
-previewJson :: Palette p => Proxy p -> Json.Value -> Image PixelRGB8
-previewJson (Proxy @p) value = runST $ do
-    canvas <- Picture.Type.newMutableImage width height
-    for_ entities $ \entity -> do
-        let get axis = round (entity ^?! coord axis)
-        Picture.Type.writePixel canvas (get "x") (get "y") (rgb entity)
-    for_ tiles $ \tile -> do
-        let get axis = round (tile ^?! coord axis)
-        Picture.Type.writePixel canvas (get "x") (get "y") (rgb tile)
-    Picture.Type.unsafeFreezeImage canvas
+pixelInfo :: Palette p => Proxy p -> PixelRGB8 -> (Category, Json.Object)
+pixelInfo (Proxy @p) col = (categorize object, asJson object)
   where
-    entities = value ^?! _Object . Lens.ix "entities" . _Array
-    tiles = value ^?! _Object . Lens.ix "tiles" . _Array
-    width = largest "x" entities `max` largest "x" tiles
-    height = largest "y" entities `max` largest "y" tiles
-    coord axis = Lens.ix "position" . Lens.ix axis . _Number
-    largest axis =
-        let coords = Lens.traversed . coord axis
-        in  Lens.maximumOf coords >>> maybe 0 round
-    rgb obj =
-        let name' = obj ^?! Lens.ix "name" . _String
-        in  colour $ fromJust $ search @p name'
-
-pixelToJson :: Palette p => Proxy p -> PixelRGB8 -> (Category, Json.Object)
-pixelToJson (Proxy @p) col = (categorize @p object, toJson object)
-  where
-    object = nearest col
+    object = case getColour @p col of
+        Just obj -> obj
+        Nothing -> nearest col
 
 -- | Converts from JSON to a string, taking a version number to include
 -- in the output.

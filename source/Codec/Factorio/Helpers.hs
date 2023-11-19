@@ -5,18 +5,26 @@ module Codec.Factorio.Helpers
     ( decompress
     , distance
     , closestTo
+    , updatePixel
+    , forwards
+    , backwards
     ) where
 
 import Codec.Compression.Zlib qualified as ZLib
 import Codec.Compression.Zlib.Internal (DecompressError)
 import Codec.Compression.Zlib.Internal qualified as ZLib.Internal
-import Codec.Picture (PixelRGB8)
+import Codec.Picture (PixelRGB8, Pixel)
 import Codec.Picture qualified as Picture
+import Codec.Picture.Types (MutableImage)
 import Control.Arrow ((>>>))
+import Control.Monad.Primitive (PrimMonad, PrimState)
 import Data.ByteString.Builder qualified as Builder
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
 import Data.Functor ((<&>))
 import Data.List qualified as List
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Word (Word8)
 
@@ -54,3 +62,30 @@ closestTo :: (a -> PixelRGB8) -> [a] -> PixelRGB8 -> a
 closestTo toCol options col =
     let measure = toCol >>> distance col
     in  List.minimumBy (comparing measure) options
+
+updatePixel
+    :: (PrimMonad m, Pixel a)
+    => MutableImage (PrimState m) a
+    -> Int -> Int
+    -> (a -> a)
+    -> m ()
+updatePixel image x y fn = do
+    val <- Picture.readPixel image x y
+    Picture.writePixel image x y $ fn val
+
+-- | Assuming the input map is complete (that is, it contains in it
+-- every possible key - so a lookup will always succeed), this function
+-- returns the value for a given key.
+--
+-- If this assumption does not hold, will throw an error.
+forwards :: Ord k => Map k v -> k -> v
+forwards map' key = fromJust $ Map.lookup key map'
+
+-- | Attempts to find the (first) key associated with a given value.
+backwards :: Ord v => Map k v -> v -> Maybe k
+backwards map' val = Map.lookup val (invert map')
+
+invert :: Ord v => Map k v -> Map v k
+invert = Map.toList >>> fmap swap >>> Map.fromList
+  where
+    swap (x, y) = (y, x)

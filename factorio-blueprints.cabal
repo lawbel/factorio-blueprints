@@ -32,9 +32,9 @@ library
         , base ^>= 4.17.2
         , base64 ^>= 0.4.2
         , bytestring ^>= 0.11.5
+        , containers ^>= 0.6.7
         , JuicyPixels ^>= 3.3.8
-        , lens ^>= 5.2.3
-        , lens-aeson ^>= 1.2.3
+        , primitive ^>= 0.7.4
         , text ^>= 2.0.2
         , zlib ^>= 0.6.3
     hs-source-dirs: source

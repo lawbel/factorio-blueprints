@@ -8,7 +8,7 @@ module Main
     ( main
     ) where
 
-import Codec.Factorio (Palette)
+import Codec.Factorio (Figure, Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Vanilla qualified as Vanilla
 import Codec.Picture qualified as Picture
@@ -101,11 +101,14 @@ run MkArgs{image, set, output, preview} = do
     bytes <- File.OsPath.readFile' image
     case Picture.decodeImage bytes of
         Left err -> die err
-        Right file -> withSet set $ \palette -> do
+        Right file -> withSet set $ \(Proxy @p) -> do
             let rgb = Picture.convertRGB8 file
-            let json = Factorio.imageToJson palette rgb
+            let figure = Factorio.setPalette @p rgb
+            -- let quantized = Factorio.quantize figure
+            let dithered = Factorio.dither figure
+            let json = Factorio.toJson dithered
             for_ output $ printAs json
-            for_ preview $ writePreview palette json
+            for_ preview $ writePreview dithered
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
@@ -124,8 +127,7 @@ prettyPrintJson =
         >>> Text.Lazy.toStrict
         >>> Text.IO.putStrLn
 
-writePreview :: Palette p => Proxy p -> Json.Value -> OsPath -> IO ()
-writePreview palette json path = do
-    let img = Factorio.previewJson palette json
-    let bytes = Bytes.toStrict $ Picture.encodePng img
+writePreview :: Figure p -> OsPath -> IO ()
+writePreview (Factorio.MkFigure image) path = do
+    let bytes = Bytes.toStrict $ Picture.encodePng image
     File.OsPath.writeFile' path bytes
