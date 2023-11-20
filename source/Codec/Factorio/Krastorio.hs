@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Codec.Factorio.Vanilla
+module Codec.Factorio.Krastorio
     ( -- * Flooring
       Flooring
     , Floor(..)
@@ -15,6 +15,7 @@ module Codec.Factorio.Vanilla
     ) where
 
 import Codec.Factorio (Palette)
+import Codec.Factorio.Vanilla qualified as Vanilla
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Helpers (closestTo, forwards, backwards)
 import Codec.Picture (PixelRGB8)
@@ -28,8 +29,8 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 
 data Flooring
-data Floor = Stone | Concrete | Refined
-    deriving (Bounded, Enum, Eq, Ord, Read, Show)
+data Floor = VanillaFloor Vanilla.Floor | BlackReinforced | WhiteReinforced
+    deriving (Eq, Ord, Read, Show)
 
 data All
 data Each = MkFloor Floor | Wall | Gate
@@ -43,19 +44,26 @@ instance Palette Flooring where
     getColour = backwards floorColours
     asJson object = Json.Map.fromList ["name" .= Factorio.name object]
     categorize _ = Factorio.Tile
-    nearest = closestTo Factorio.colour [minBound .. maxBound]
+    nearest = closestTo Factorio.colour $
+        BlackReinforced : WhiteReinforced : do
+            vanilla <- [minBound .. maxBound]
+            pure $ VanillaFloor vanilla
 
 floorNames :: Map Floor Text
-floorNames = Map.fromList
-    [ (Stone, "stone-path")
-    , (Concrete, "concrete")
-    , (Refined, "refined-concrete") ]
+floorNames = vanilla <> krastorio
+  where
+    krastorio = Map.fromList
+        [ (BlackReinforced, "kr-black-reinforced-plate")
+        , (WhiteReinforced, "kr-white-reinforced-plate") ]
+    vanilla = Map.mapKeys VanillaFloor Vanilla.floorNames
 
 floorColours :: Map Floor PixelRGB8
-floorColours = Map.fromList
-    [ (Stone, Picture.PixelRGB8 0x52 0x51 0x4A)
-    , (Concrete, Picture.PixelRGB8 0x3A 0x3D 0x3A)
-    , (Refined, Picture.PixelRGB8 0x31 0x31 0x29) ]
+floorColours = vanilla <> krastorio
+  where
+    krastorio = Map.fromList
+        [ (BlackReinforced, Picture.PixelRGB8 0x29 0x28 0x29)
+        , (WhiteReinforced, Picture.PixelRGB8 0x6B 0x6D 0x6B) ]
+    vanilla = Map.mapKeys VanillaFloor Vanilla.floorColours
 
 instance Palette All where
     type Object All = Each
@@ -77,9 +85,9 @@ instance Palette All where
         Wall -> Factorio.Entity
         Gate -> Factorio.Entity
     nearest = closestTo Factorio.colour $
-        Wall : Gate : do
+        Wall : Gate : MkFloor BlackReinforced : MkFloor WhiteReinforced : do
             flooring <- [minBound .. maxBound]
-            pure $ MkFloor flooring
+            pure $ MkFloor $ VanillaFloor flooring
 
 eachName :: Map Each Text
 eachName = Map.fromList (wall : gate : assocs)

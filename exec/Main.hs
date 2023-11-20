@@ -11,6 +11,7 @@ module Main
 import Codec.Factorio (Figure, Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Vanilla qualified as Vanilla
+import Codec.Factorio.Krastorio qualified as Krastorio
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Extra (scaleBilinear)
@@ -37,7 +38,11 @@ import Text.Read (readEither)
 data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data Set = Floor | All
+data Set
+    = Floor  -- ^ vanilla, flooring only
+    | All  -- ^ vanilla, everything (flooring & entities)
+    | Krfloor  -- ^ krastorio, flooring only
+    | Krall  -- ^ krastorio, everything (flooring & entities)
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Dither = Fs | Mae | Atkin
@@ -71,11 +76,13 @@ parseArgs = do
             "output a preview of the blueprint to the given file, in \
             \PNG format"
         , Opt.value Nothing ]
-    set <- Opt.option (Opt.eitherReader readTitle) $ mconcat
+    let readSet = filter (/= '-') >>> readTitle
+    set <- Opt.option (Opt.eitherReader readSet) $ mconcat
         [ Opt.long "set"
         , Opt.metavar "SET"
         , Opt.help
-            "the tileset/palette to use - should be one of {flooring, all}"
+            "the tileset/palette to use - should be one of \
+            \{floor, all, kr-floor, kr-all}"
         , Opt.value All ]
     let readFormat = readTitle >>> fmap Just
     output <- Opt.option (Opt.eitherReader readFormat) $ mconcat
@@ -175,6 +182,8 @@ withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
     Floor -> cont $ Proxy @Vanilla.Flooring
     All -> cont $ Proxy @Vanilla.All
+    Krfloor -> cont $ Proxy @Krastorio.Flooring
+    Krall -> cont $ Proxy @Krastorio.All
 
 printAs :: Json.Value -> Format -> IO ()
 printAs json = \case
