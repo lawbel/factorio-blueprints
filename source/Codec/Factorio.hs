@@ -10,14 +10,16 @@ module Codec.Factorio
     ( -- * main interface
       jsonToBlueprint
     , blueprintToJson
-    , setPalette
     , quantize
-    , dither
+    , ditherFS
+    , ditherMAE
+    , ditherAtkinson
     , toJson
       -- * Palette class
     , Palette(..)
     , Category(..)
     , Figure(..)
+    , setPalette
       -- * Errors
     , DecodeError(..)
       -- * Utilities
@@ -26,13 +28,13 @@ module Codec.Factorio
 
 import Codec.Compression.Zlib qualified as ZLib
 import Codec.Compression.Zlib.Internal (DecompressError)
-import Codec.Factorio.Helpers (decompress, updatePixel)
+import Codec.Factorio.Helpers qualified as Help
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Types qualified as Picture.Type
 import Control.Arrow ((>>>))
 import Control.Exception (Exception, throw)
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad.ST (runST)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Json
@@ -44,6 +46,8 @@ import Data.Char qualified as Char
 import Data.Either (partitionEithers)
 import Data.Foldable (for_)
 import Data.Function ((&))
+import Data.Matrix (Matrix)
+import Data.Matrix qualified as Matrix
 import Data.Proxy (Proxy(..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -103,52 +107,55 @@ quantize (MkFigure @p image) = MkFigure $ Picture.pixelMap quant image
     quant = nearest @p >>> colour
 
 -- | Implements Floyd-Steinberg dithering on the image.
-dither :: Palette p => Figure p -> Figure p
-dither (MkFigure @p image) = MkFigure $ runST $ do
+ditherFS :: Palette p => Figure p -> Figure p
+ditherFS = ditherError (2, 1) $ fmap (/ 16) $ Matrix.fromLists
+    [ [ 0, 0, 7 ]
+    , [ 3, 5, 1 ] ]
+
+-- | Implements Minimized Average Error dithering. Similar to 'ditherFS',
+-- but works with a larger kernel. As such, it should be slower to run but
+-- yield less visual artifacts.
+ditherMAE :: Palette p => Figure p -> Figure p
+ditherMAE = ditherError (3, 1) $ fmap (/ 48) $ Matrix.fromLists
+    [ [ 0, 0, 0, 7, 5 ]
+    , [ 3, 5, 7, 5, 3 ]
+    , [ 1, 3, 5, 3, 1 ] ]
+
+-- | Implements Atkinson dithering. Similar to 'ditherMAE', but only
+-- diffuses 3/4 of the error. This improves locality of the dither, at cost
+-- of worse performance near extreme black and extreme white.
+ditherAtkinson :: Palette p => Figure p -> Figure p
+ditherAtkinson = ditherError (3, 1) $ fmap (/ 8) $ Matrix.fromLists
+    [ [ 0, 0, 0, 1, 1 ]
+    , [ 0, 1, 1, 1, 0 ]
+    , [ 0, 0, 1, 0, 0] ]
+
+-- | Implements error-diffusion dithering, using the given matrix as a kernel
+-- which has the given position as the pixel being processed.
+--
+-- Note: the position in the matrix is 1-based, so e.g. the top-left
+-- would be (1, 1).
+ditherError :: Palette p => (Int, Int) -> Matrix Float -> Figure p -> Figure p
+ditherError center kernel (MkFigure @p image) = MkFigure $ runST $ do
     canvas <- Picture.Type.thawImage image
-    let update x y fn = when (inBounds x y) $ updatePixel canvas x y fn
+    let update (x, y) fn = when (valid x y) $ Help.updatePixel canvas x y fn
     for_ [0 .. height - 1] $ \y -> do
         for_ [0 .. width - 1] $ \x -> do
-            oldPixel <- Picture.Type.readPixel canvas x y
-            let newPixel = colour $ nearest @p oldPixel
-            Picture.Type.writePixel canvas x y newPixel
-            let err = difference oldPixel newPixel
-            update (x + 1) y $ add $ scale (7/16) err
-            update (x - 1) (y + 1) $ add $ scale (3/16) err
-            update x (y + 1) $ add $ scale (5/16) err
-            update (x + 1) (y + 1) $ add $ scale (1/16) err
+            old <- Picture.Type.readPixel canvas x y
+            let new = colour $ nearest @p old
+            let err = Help.diffPixel old new
+            Picture.Type.writePixel canvas x y new
+            for_ (Help.positionsAfter center kernel) $ \(col, row) -> do
+                let frac = Matrix.getElem row col kernel
+                let adjust = Help.scaleTriple frac err
+                let offset = Help.diffPair (col, row) center
+                let pos = Help.addPair (x, y) offset
+                unless (frac == 0) $ update pos $ Help.addPixel adjust
     Picture.Type.unsafeFreezeImage canvas
   where
     width = Picture.imageWidth image
     height = Picture.imageHeight image
-    inBounds x y = (0 <= x) && (x < width) && (0 <= y) && (y < height)
-
--- | Helper function for manipulating colours.
-difference :: PixelRGB8 -> PixelRGB8 -> (Int, Int, Int)
-difference (Picture.PixelRGB8 r1 g1 b1) (Picture.PixelRGB8 r2 g2 b2) =
-    ( w2i r1 - w2i r2
-    , w2i g1 - w2i g2
-    , w2i b1 - w2i b2 )
-  where
-    w2i = fromIntegral @Word8 @Int
-
--- | Helper function for manipulating colours.
-scale :: Float -> (Int, Int, Int) -> (Int, Int, Int)
-scale factor (x, y, z) = (apply x, apply y, apply z)
-  where
-    apply = fromIntegral >>> (* factor) >>> round
-
--- | Helper function for manipulating colours.
-add :: (Int, Int, Int) -> PixelRGB8 -> PixelRGB8
-add (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
-    Picture.PixelRGB8
-        (i2w $ r1 + w2i r2)
-        (i2w $ g1 + w2i g2)
-        (i2w $ b1 + w2i b2)
-  where
-    w2i = fromIntegral @Word8 @Int
-    i2w = min max8 >>> max 0 >>> fromIntegral @Int @Word8
-    max8 = w2i $ maxBound @Word8
+    valid x y = (0 <= x) && (x < width) && (0 <= y) && (y < height)
 
 -- | Take an image (perhaps after various processing steps earlier) and output
 -- it in the JSON format used for blueprints in-game.
@@ -212,7 +219,7 @@ blueprintToJson text = do
     let lazy = Text.Lazy.drop 1 versioned
     let base64 = Text.Lazy.Encode.encodeUtf8 lazy
     zipped <- first Base64Error $ Base64.decodeBase64 base64
-    bytes <- first ZLibError $ decompress zipped
+    bytes <- first ZLibError $ Help.decompress zipped
     first (Text.pack >>> JsonError) $ Json.eitherDecode bytes
 
 -- | Convenience function for testing or interactive use. Tries to decode

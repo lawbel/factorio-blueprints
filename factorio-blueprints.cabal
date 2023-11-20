@@ -34,6 +34,7 @@ library
         , bytestring ^>= 0.11.5
         , containers ^>= 0.6.7
         , JuicyPixels ^>= 3.3.8
+        , matrix ^>= 0.3.6
         , primitive ^>= 0.7.4
         , text ^>= 2.0.2
         , zlib ^>= 0.6.3

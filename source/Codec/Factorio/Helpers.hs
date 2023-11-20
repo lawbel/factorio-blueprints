@@ -2,12 +2,24 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Codec.Factorio.Helpers
-    ( decompress
+    ( -- * Compression
+      decompress
+      -- * Pixels
     , distance
     , closestTo
     , updatePixel
+    , diffPixel
+    , addPixel
+      -- Coordinates
+    , diffPair
+    , addPair
+    , scaleTriple
+      -- * Maps
     , forwards
     , backwards
+      -- * Matrices
+    , positions
+    , positionsAfter
     ) where
 
 import Codec.Compression.Zlib qualified as ZLib
@@ -27,6 +39,8 @@ import Data.Map qualified as Map
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Word (Word8)
+import Data.Matrix (Matrix)
+import Data.Matrix qualified as Matrix
 
 -- | Alternate version of 'ZLib.decompress' which explicitly returns
 -- any errors.
@@ -89,3 +103,48 @@ invert :: Ord v => Map k v -> Map v k
 invert = Map.toList >>> fmap swap >>> Map.fromList
   where
     swap (x, y) = (y, x)
+
+positions :: Matrix a -> [(Int, Int)]
+positions matrix = do
+    y <- [1 .. rows]
+    x <- [1 .. cols]
+    pure (x, y)
+  where
+    cols = Matrix.ncols matrix
+    rows = Matrix.nrows matrix
+
+positionsAfter :: (Int, Int) -> Matrix a -> [(Int, Int)]
+positionsAfter pos matrix = drop 1 $ dropWhile (/= pos) $ positions matrix
+
+-- | Helper function for manipulating colours.
+diffPixel :: PixelRGB8 -> PixelRGB8 -> (Int, Int, Int)
+diffPixel (Picture.PixelRGB8 r1 g1 b1) (Picture.PixelRGB8 r2 g2 b2) =
+    ( w2i r1 - w2i r2
+    , w2i g1 - w2i g2
+    , w2i b1 - w2i b2 )
+  where
+    w2i = fromIntegral @Word8 @Int
+
+diffPair :: (Int, Int) -> (Int, Int) -> (Int, Int)
+diffPair (x1, y1) (x2, y2) = (x1 - x2, y1 - y2)
+
+addPair :: (Int, Int) -> (Int, Int) -> (Int, Int)
+addPair (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
+
+-- | Helper function for manipulating colours.
+scaleTriple :: Float -> (Int, Int, Int) -> (Int, Int, Int)
+scaleTriple factor (x, y, z) = (apply x, apply y, apply z)
+  where
+    apply = fromIntegral >>> (* factor) >>> round
+
+-- | Helper function for manipulating colours.
+addPixel :: (Int, Int, Int) -> PixelRGB8 -> PixelRGB8
+addPixel (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
+    Picture.PixelRGB8
+        (i2w $ r1 + w2i r2)
+        (i2w $ g1 + w2i g2)
+        (i2w $ b1 + w2i b2)
+  where
+    w2i = fromIntegral @Word8 @Int
+    i2w = min max8 >>> max 0 >>> fromIntegral @Int @Word8
+    max8 = w2i $ maxBound @Word8

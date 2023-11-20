@@ -40,13 +40,16 @@ data Format = Str | Json
 data Set = Floor | All
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
+data Dither = Fs | Mae | Atkin
+    deriving (Bounded, Enum, Eq, Ord, Read, Show)
+
 data Resize = Width Int | Height Int | Scale Float
     deriving (Eq, Ord, Read, Show)
 
 data Args = MkArgs
     { image :: OsPath
     , set :: Set
-    , dither :: Bool
+    , dither :: Maybe Dither
     , output :: Maybe Format
     , preview :: Maybe OsPath
     , resize :: Maybe Resize }
@@ -74,22 +77,23 @@ parseArgs = do
         , Opt.help
             "the tileset/palette to use - should be one of {flooring, all}"
         , Opt.value All ]
-    let readJust = readTitle >>> fmap Just
-    output <- Opt.option (Opt.eitherReader readJust) $ mconcat
+    let readFormat = readTitle >>> fmap Just
+    output <- Opt.option (Opt.eitherReader readFormat) $ mconcat
         [ Opt.long "output"
         , Opt.short 'o'
         , Opt.metavar "FORMAT"
         , Opt.help
             "print the blueprint in the given format - one of {str, json}"
         , Opt.value Nothing ]
-    dither <- asum
-        [ Opt.flag' True $ mconcat
-            [ Opt.long "dither"
-            , Opt.help "enable dithering (the default)" ]
-        , Opt.flag' False $ mconcat
-            [ Opt.long "no-dither"
-            , Opt.help "disable dithering" ]
-        , pure True ]
+    let readDither = readTitle >>> fmap Just
+    dither <- Opt.option (Opt.eitherReader readDither) $ mconcat
+        [ Opt.long "dither"
+        , Opt.short 'd'
+        , Opt.metavar "METHOD"
+        , Opt.help
+            "how (if at all) to dither the preview image - one of \
+            \{fs, mae, atkin}, or omit option to not apply dithering"
+        , Opt.value Nothing ]
     resize <- asum
         [ fmap (Width >>> Just) $ Opt.option Opt.auto $ mconcat
             [ Opt.long "width"
@@ -135,11 +139,17 @@ run MkArgs{image, set, output, preview, dither, resize} = do
         Left err -> die err
         Right file -> withSet set $ \(Proxy @p) -> do
             let sized = maybe id applyResize resize $ Picture.convertRGB8 file
-            let process = if dither then Factorio.dither else Factorio.quantize
+            let process = maybe Factorio.quantize applyDither dither
             let processed = process $ Factorio.setPalette @p sized
             let json = Factorio.toJson processed
             for_ output $ printAs json
             for_ preview $ writePreview processed
+
+applyDither :: Palette p => Dither -> Figure p -> Figure p
+applyDither = \case
+    Fs -> Factorio.ditherFS
+    Mae -> Factorio.ditherMAE
+    Atkin -> Factorio.ditherAtkinson
 
 applyResize :: Resize -> Image PixelRGB8 -> Image PixelRGB8
 applyResize resize image = case resize of
