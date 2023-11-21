@@ -14,7 +14,6 @@ import Test.Tasty.HUnit qualified as Tasty.U
 import Test.Tasty.QuickCheck ((===))
 import Test.Tasty.QuickCheck qualified as Tasty.Q
 
-
 main :: IO ()
 main = Tasty.defaultMain tests
 
@@ -46,6 +45,4 @@ specialCases = Tasty.testGroup "special cases"
     solar = Picture.PixelRGB8 0x19 0x20 0x21
 
 allPalette :: [Base.All]
-allPalette = mconcat
-    [ Base.MkAll . Left <$> [minBound .. maxBound]
-    , Base.MkAll . Right <$> [minBound .. maxBound] ]
+allPalette = [minBound .. maxBound]

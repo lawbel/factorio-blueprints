@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -15,8 +16,9 @@ module Codec.Factorio.Krastorio
 
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
-import Codec.Factorio.Helpers (closestTo, forwards, backwards)
 import Codec.Factorio.Base qualified as Base
+import Codec.Factorio.Helpers (EitherIsEnum, EitherIsBounded)
+import Codec.Factorio.Helpers qualified as Help
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
 import Control.Arrow ((&&&))
@@ -29,22 +31,26 @@ import Data.Text (Text)
 data NewTile = BlackReinforced | WhiteReinforced
     deriving stock (Bounded, Enum, Eq, Ord, Read, Show)
 
-newtype AllTile = MkAllFloor (Either Base.Tile NewTile)
+newtype AllTile = MkAllTile (Either Base.Tile NewTile)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
+    deriving Bounded via EitherIsBounded Base.Tile NewTile
+    deriving Enum via EitherIsEnum Base.Tile NewTile
 
 newtype All = MkAll (Either AllTile Base.Entity)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
+    deriving Bounded via EitherIsBounded AllTile Base.Entity
+    deriving Enum via EitherIsEnum AllTile Base.Entity
 
 instance Palette NewTile where
-    name = forwards tileNames
-    getName = backwards tileNames
-    colour = forwards tileColours
-    getColour = backwards tileColours
+    name = Help.forwards tileNames
+    getName = Help.backwards tileNames
+    colour = Help.forwards tileColours
+    getColour = Help.backwards tileColours
     asJson object = Json.Map.fromList ["name" .= Factorio.name object]
     categorize _ = Factorio.Tile
-    nearest = closestTo Factorio.colour [minBound .. maxBound]
+    nearest = Help.closestTo Factorio.colour [minBound .. maxBound]
 
 tileNames :: Map NewTile Text
 tileNames = Map.fromList $ fmap (id &&& name) [minBound .. maxBound]

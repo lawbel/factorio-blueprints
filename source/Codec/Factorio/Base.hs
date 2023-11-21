@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -17,7 +18,8 @@ module Codec.Factorio.Base
 
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
-import Codec.Factorio.Helpers (closestTo, forwards, backwards)
+import Codec.Factorio.Helpers (EitherIsBounded, EitherIsEnum)
+import Codec.Factorio.Helpers qualified as Help
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
 import Control.Arrow ((&&&))
@@ -37,15 +39,17 @@ data Entity = Wall | Gate
 newtype All = MkAll (Either Tile Entity)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
+    deriving Bounded via EitherIsBounded Tile Entity
+    deriving Enum via EitherIsEnum Tile Entity
 
 instance Palette Tile where
-    name = forwards tileNames
-    getName = backwards tileNames
-    colour = forwards tileColours
-    getColour = backwards tileColours
+    name = Help.forwards tileNames
+    getName = Help.backwards tileNames
+    colour = Help.forwards tileColours
+    getColour = Help.backwards tileColours
     asJson object = Json.Map.fromList ["name" .= Factorio.name object]
     categorize _ = Factorio.Tile
-    nearest = closestTo Factorio.colour [minBound .. maxBound]
+    nearest = Help.closestTo Factorio.colour [minBound .. maxBound]
 
 tileNames :: Map Tile Text
 tileNames = Map.fromList $ fmap (id &&& name) [minBound .. maxBound]
@@ -64,10 +68,10 @@ tileColours = Map.fromList $ fmap (id &&& colour) [minBound .. maxBound]
         Refined  -> Picture.PixelRGB8 0x31 0x31 0x29
 
 instance Palette Entity where
-    name = forwards entityName
-    getName = backwards entityName
-    colour = forwards entityColour
-    getColour = backwards entityColour
+    name = Help.forwards entityName
+    getName = Help.backwards entityName
+    colour = Help.forwards entityColour
+    getColour = Help.backwards entityColour
     asJson = \case
         Wall -> Json.Map.fromList
             [ "name" .= Factorio.name Wall ]
@@ -75,7 +79,7 @@ instance Palette Entity where
             [ "name" .= Factorio.name Gate
             , "direction" .= Json.Number 1 ]
     categorize _ = Factorio.Entity
-    nearest = closestTo Factorio.colour [minBound .. maxBound]
+    nearest = Help.closestTo Factorio.colour [minBound .. maxBound]
 
 entityName :: Map Entity Text
 entityName = Map.fromList $ fmap (id &&& name) [minBound .. maxBound]

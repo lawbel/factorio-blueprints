@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Codec.Factorio.Helpers
     ( -- * Compression
@@ -20,6 +21,9 @@ module Codec.Factorio.Helpers
       -- * Matrices
     , positions
     , positionsAfter
+      -- * Deriving Via
+    , EitherIsBounded(..)
+    , EitherIsEnum(..)
     ) where
 
 import Codec.Compression.Zlib qualified as ZLib
@@ -148,3 +152,26 @@ addPixel (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
     w2i = fromIntegral @Word8 @Int
     i2w = min max8 >>> max 0 >>> fromIntegral @Int @Word8
     max8 = w2i $ maxBound @Word8
+
+newtype EitherIsBounded a b = MkEitherIsBounded (Either a b)
+    deriving (Eq, Ord, Show, Read)
+
+instance (Bounded a, Bounded b) => Bounded (EitherIsBounded a b) where
+    minBound = MkEitherIsBounded $ Left minBound
+    maxBound = MkEitherIsBounded $ Right maxBound
+
+newtype EitherIsEnum a b = MkEitherIsEnum (Either a b)
+    deriving (Eq, Ord, Show, Read)
+
+instance (Enum a, Enum b, Bounded a) => Enum (EitherIsEnum a b) where
+    toEnum n
+        | n < 0 = error "bad argument"
+        | n < numLeft = MkEitherIsEnum $ Left $ toEnum n
+        | otherwise = MkEitherIsEnum $ Right $ toEnum (n - numLeft)
+      where
+        numLeft = fromEnum (maxBound @a) + 1
+    fromEnum = \case
+        MkEitherIsEnum (Left x) -> fromEnum x
+        MkEitherIsEnum (Right y) -> fromEnum y + numLeft
+      where
+        numLeft = fromEnum (maxBound @a) + 1
