@@ -1,10 +1,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 
 module Codec.Factorio
     ( -- * main interface
@@ -55,7 +53,6 @@ import Data.Text.IO qualified as Text.IO
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Builder
 import Data.Text.Lazy.Encoding qualified as Text.Lazy.Encode
-import Data.Word (Word8)
 
 -- | All possible errors that can occur when decoding a blueprint string.
 data DecodeError
