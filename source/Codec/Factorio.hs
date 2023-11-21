@@ -44,7 +44,7 @@ import Data.Bifunctor (first)
 import Data.ByteString.Lazy.Base64 qualified as Base64
 import Data.Char qualified as Char
 import Data.Either (partitionEithers)
-import Data.Foldable (for_)
+import Data.Foldable (for_, asum)
 import Data.Function ((&))
 import Data.Matrix (Matrix)
 import Data.Matrix qualified as Matrix
@@ -89,6 +89,23 @@ class Palette obj where
     nearest :: PixelRGB8 -> obj
     getName :: Text -> Maybe obj
     getColour :: PixelRGB8 -> Maybe obj
+
+instance (Palette a, Palette b) => Palette (Either a b) where
+    name = either name name
+    colour = either colour colour
+    asJson = either asJson asJson
+    categorize = either categorize categorize
+    nearest col =
+        let left = Left $ nearest col
+            right = Right $ nearest col
+            dist = colour >>> Help.distance col
+        in  if dist left < dist right then left else right
+    getName str = asum
+        [ Left <$> getName str
+        , Right <$> getName str ]
+    getColour col = asum
+        [ Left <$> getColour col
+        , Right <$> getColour col ]
 
 -- | Wrap up an 'Image' into a 'Figure' - this is just a newtype wrapper
 -- (so has no runtime impact), but it allows us to keep track of the colour

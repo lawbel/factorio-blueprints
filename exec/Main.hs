@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Main
     ( main
@@ -10,8 +11,8 @@ module Main
 
 import Codec.Factorio (Figure, Palette)
 import Codec.Factorio qualified as Factorio
-import Codec.Factorio.Vanilla qualified as Vanilla
 import Codec.Factorio.Krastorio qualified as Krastorio
+import Codec.Factorio.Vanilla qualified as Vanilla
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Extra (scaleBilinear)
@@ -24,6 +25,7 @@ import Data.ByteString qualified as Bytes
 import Data.Char qualified as Char
 import Data.Foldable (for_)
 import Data.Proxy (Proxy(..))
+import Data.String.Interpolate (i)
 import Data.Text.IO qualified as Text.IO
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Builder
@@ -39,13 +41,13 @@ data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Set
-    = Floor  -- ^ vanilla, flooring only
+    = Tile  -- ^ vanilla, flooring only
     | All  -- ^ vanilla, everything (flooring & entities)
-    | Krfloor  -- ^ krastorio, flooring only
-    | Krall  -- ^ krastorio, everything (flooring & entities)
+    | TileKr  -- ^ krastorio, flooring only
+    | AllKr  -- ^ krastorio, everything (flooring & entities)
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data Dither = Fs | Mae | Atkin
+data Dither = Fs | Mae | Atkins
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Resize = Width Int | Height Int | Scale Float
@@ -76,14 +78,13 @@ parseArgs = do
             "output a preview of the blueprint to the given file, in \
             \PNG format"
         , Opt.value Nothing ]
-    let readSet = filter (/= '-') >>> readTitle
     set <- Opt.option (Opt.eitherReader readSet) $ mconcat
         [ Opt.long "set"
         , Opt.metavar "SET"
         , Opt.help
             "the tileset/palette to use - should be one of \
-            \{floor, all, kr-floor, kr-all}"
-        , Opt.value All ]
+            \{tile, tile-kr, all, all-kr}"
+        , Opt.value Tile ]
     let readFormat = readTitle >>> fmap Just
     output <- Opt.option (Opt.eitherReader readFormat) $ mconcat
         [ Opt.long "output"
@@ -99,7 +100,7 @@ parseArgs = do
         , Opt.metavar "METHOD"
         , Opt.help
             "how (if at all) to dither the preview image - one of \
-            \{fs, mae, atkin}, or omit option to not apply dithering"
+            \{fs, mae, atkins}, or omit option to not apply dithering"
         , Opt.value Nothing ]
     resize <- asum
         [ fmap (Width >>> Just) $ Opt.option Opt.auto $ mconcat
@@ -118,6 +119,14 @@ parseArgs = do
                 \size, scale=0.5 means half scale, etc." ]
         , pure Nothing ]
     pure $ MkArgs{image, set, output, preview, dither, resize}
+
+readSet :: String -> Either String Set
+readSet = \case
+    "tile" -> Right Tile
+    "tile-kr" -> Right TileKr
+    "all" -> Right All
+    "all-kr" -> Right AllKr
+    txt -> Left [i|'#{txt}' is not a valid set|]
 
 encodeOsPath :: String -> Either String OsPath
 encodeOsPath = OsPath.encodeUtf >>> first show
@@ -156,7 +165,7 @@ applyDither :: Palette p => Dither -> Figure p -> Figure p
 applyDither = \case
     Fs -> Factorio.ditherFS
     Mae -> Factorio.ditherMAE
-    Atkin -> Factorio.ditherAtkinson
+    Atkins -> Factorio.ditherAtkinson
 
 applyResize :: Resize -> Image PixelRGB8 -> Image PixelRGB8
 applyResize resize image = case resize of
@@ -180,10 +189,10 @@ applyResize resize image = case resize of
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
-    Floor -> cont $ Proxy @Vanilla.Floor
-    All -> cont $ Proxy @Vanilla.Each
-    Krfloor -> cont $ Proxy @Krastorio.Floor
-    Krall -> cont $ Proxy @Krastorio.Each
+    Tile -> cont $ Proxy @Vanilla.Tile
+    All -> cont $ Proxy @Vanilla.All
+    TileKr -> cont $ Proxy @Krastorio.AllTile
+    AllKr -> cont $ Proxy @Krastorio.All
 
 printAs :: Json.Value -> Format -> IO ()
 printAs json = \case

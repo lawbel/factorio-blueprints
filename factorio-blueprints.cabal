@@ -69,6 +69,7 @@ executable blueprints
         , JuicyPixels
         , JuicyPixels-extra ^>= 0.6.0
         , optparse-applicative ^>= 0.18.1
+        , string-interpolate
         , text
     main-is: Main.hs
     hs-source-dirs: exec

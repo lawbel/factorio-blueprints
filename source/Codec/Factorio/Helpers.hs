@@ -36,11 +36,11 @@ import Data.Functor ((<&>))
 import Data.List qualified as List
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Matrix (Matrix)
+import Data.Matrix qualified as Matrix
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Word (Word8)
-import Data.Matrix (Matrix)
-import Data.Matrix qualified as Matrix
 
 -- | Alternate version of 'ZLib.decompress' which explicitly returns
 -- any errors.
