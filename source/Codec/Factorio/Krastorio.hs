@@ -16,7 +16,7 @@ module Codec.Factorio.Krastorio
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Helpers (closestTo, forwards, backwards)
-import Codec.Factorio.Vanilla qualified as Vanilla
+import Codec.Factorio.Base qualified as Base
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
 import Control.Arrow ((&&&))
@@ -29,11 +29,11 @@ import Data.Text (Text)
 data NewTile = BlackReinforced | WhiteReinforced
     deriving stock (Bounded, Enum, Eq, Ord, Read, Show)
 
-newtype AllTile = MkAllFloor (Either Vanilla.Tile NewTile)
+newtype AllTile = MkAllFloor (Either Base.Tile NewTile)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
 
-newtype All = MkAll (Either AllTile Vanilla.Entity)
+newtype All = MkAll (Either AllTile Base.Entity)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
 

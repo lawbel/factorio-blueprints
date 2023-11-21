@@ -12,7 +12,7 @@ module Main
 import Codec.Factorio (Figure, Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Krastorio qualified as Krastorio
-import Codec.Factorio.Vanilla qualified as Vanilla
+import Codec.Factorio.Base qualified as Base
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Extra (scaleBilinear)
@@ -41,8 +41,8 @@ data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Set
-    = Tile  -- ^ vanilla, flooring only
-    | All  -- ^ vanilla, everything (flooring & entities)
+    = TileBase  -- ^ base game, flooring only
+    | AllBase  -- ^ base game, everything (flooring & entities)
     | TileKr  -- ^ krastorio, flooring only
     | AllKr  -- ^ krastorio, everything (flooring & entities)
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
@@ -83,8 +83,8 @@ parseArgs = do
         , Opt.metavar "SET"
         , Opt.help
             "the tileset/palette to use - should be one of \
-            \{tile, tile-kr, all, all-kr}"
-        , Opt.value Tile ]
+            \{tile-base, tile-kr, all-base, all-kr}"
+        , Opt.value AllBase ]
     let readFormat = readTitle >>> fmap Just
     output <- Opt.option (Opt.eitherReader readFormat) $ mconcat
         [ Opt.long "output"
@@ -122,9 +122,9 @@ parseArgs = do
 
 readSet :: String -> Either String Set
 readSet = \case
-    "tile" -> Right Tile
+    "tile-base" -> Right TileBase
     "tile-kr" -> Right TileKr
-    "all" -> Right All
+    "all-base" -> Right TileBase
     "all-kr" -> Right AllKr
     txt -> Left [i|'#{txt}' is not a valid set|]
 
@@ -189,8 +189,8 @@ applyResize resize image = case resize of
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
-    Tile -> cont $ Proxy @Vanilla.Tile
-    All -> cont $ Proxy @Vanilla.All
+    TileBase -> cont $ Proxy @Base.Tile
+    AllBase -> cont $ Proxy @Base.All
     TileKr -> cont $ Proxy @Krastorio.AllTile
     AllKr -> cont $ Proxy @Krastorio.All
 

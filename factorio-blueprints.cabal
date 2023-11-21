@@ -25,7 +25,7 @@ library
     exposed-modules:
         , Codec.Factorio
         , Codec.Factorio.Helpers
-        , Codec.Factorio.Vanilla
+        , Codec.Factorio.Base
         , Codec.Factorio.Krastorio
     build-depends:
         , aeson ^>= 2.1.2

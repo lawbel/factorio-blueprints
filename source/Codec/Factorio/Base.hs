@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Codec.Factorio.Vanilla
+module Codec.Factorio.Base
     ( -- * Tiles
       Tile(..)
     , tileNames

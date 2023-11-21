@@ -3,7 +3,7 @@
 
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Helpers qualified as Help
-import Codec.Factorio.Vanilla qualified as Vanilla
+import Codec.Factorio.Base qualified as Base
 import Codec.Picture qualified as Picture
 import Control.Arrow ((>>>))
 import Data.String.Interpolate (i)
@@ -41,11 +41,11 @@ specialCases :: TestTree
 specialCases = Tasty.testGroup "special cases"
     [ Tasty.U.testCase "solar colour closest to refined" $
         Help.closestTo Factorio.colour allPalette solar
-            @?= Vanilla.MkAll (Left Vanilla.Refined) ]
+            @?= Base.MkAll (Left Base.Refined) ]
   where
     solar = Picture.PixelRGB8 0x19 0x20 0x21
 
-allPalette :: [Vanilla.All]
+allPalette :: [Base.All]
 allPalette = mconcat
-    [ Vanilla.MkAll . Left <$> [minBound .. maxBound]
-    , Vanilla.MkAll . Right <$> [minBound .. maxBound] ]
+    [ Base.MkAll . Left <$> [minBound .. maxBound]
+    , Base.MkAll . Right <$> [minBound .. maxBound] ]
