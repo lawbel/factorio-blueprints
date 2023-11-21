@@ -124,7 +124,7 @@ readSet :: String -> Either String Set
 readSet = \case
     "tile-base" -> Right TileBase
     "tile-kr" -> Right TileKr
-    "all-base" -> Right TileBase
+    "all-base" -> Right AllBase
     "all-kr" -> Right AllKr
     txt -> Left [i|'#{txt}' is not a valid set|]
 
