@@ -180,10 +180,10 @@ applyResize resize image = case resize of
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
-    Floor -> cont $ Proxy @Vanilla.Flooring
-    All -> cont $ Proxy @Vanilla.All
-    Krfloor -> cont $ Proxy @Krastorio.Flooring
-    Krall -> cont $ Proxy @Krastorio.All
+    Floor -> cont $ Proxy @Vanilla.Floor
+    All -> cont $ Proxy @Vanilla.Each
+    Krfloor -> cont $ Proxy @Krastorio.Floor
+    Krall -> cont $ Proxy @Krastorio.Each
 
 printAs :: Json.Value -> Format -> IO ()
 printAs json = \case

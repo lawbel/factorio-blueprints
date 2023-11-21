@@ -3,12 +3,10 @@
 
 module Codec.Factorio.Vanilla
     ( -- * Flooring
-      Flooring
-    , Floor(..)
+      Floor(..)
     , floorNames
     , floorColours
       -- * Everything
-    , All
     , Each(..)
     , eachName
     , eachColour
@@ -27,16 +25,13 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 
-data Flooring
 data Floor = Stone | Concrete | Refined
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data All
 data Each = MkFloor Floor | Wall | Gate
     deriving (Eq, Ord, Read, Show)
 
-instance Palette Flooring where
-    type Object Flooring = Floor
+instance Palette Floor where
     name = forwards floorNames
     getName = backwards floorNames
     colour = forwards floorColours
@@ -57,8 +52,7 @@ floorColours = Map.fromList
     , (Concrete, Picture.PixelRGB8 0x3A 0x3D 0x3A)
     , (Refined, Picture.PixelRGB8 0x31 0x31 0x29) ]
 
-instance Palette All where
-    type Object All = Each
+instance Palette Each where
     name = forwards eachName
     getName = backwards eachName
     colour = forwards eachColour

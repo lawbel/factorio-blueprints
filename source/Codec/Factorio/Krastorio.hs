@@ -3,12 +3,10 @@
 
 module Codec.Factorio.Krastorio
     ( -- * Flooring
-      Flooring
-    , Floor(..)
+      Floor(..)
     , floorNames
     , floorColours
       -- * Everything
-    , All
     , Each(..)
     , eachName
     , eachColour
@@ -28,16 +26,13 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 
-data Flooring
 data Floor = VanillaFloor Vanilla.Floor | BlackReinforced | WhiteReinforced
     deriving (Eq, Ord, Read, Show)
 
-data All
 data Each = MkFloor Floor | Wall | Gate
     deriving (Eq, Ord, Read, Show)
 
-instance Palette Flooring where
-    type Object Flooring = Floor
+instance Palette Floor where
     name = forwards floorNames
     getName = backwards floorNames
     colour = forwards floorColours
@@ -65,8 +60,7 @@ floorColours = vanilla <> krastorio
         , (WhiteReinforced, Picture.PixelRGB8 0x6B 0x6D 0x6B) ]
     vanilla = Map.mapKeys VanillaFloor Vanilla.floorColours
 
-instance Palette All where
-    type Object All = Each
+instance Palette Each where
     name = forwards eachName
     getName = backwards eachName
     colour = forwards eachColour

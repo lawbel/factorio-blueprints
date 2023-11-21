@@ -81,17 +81,14 @@ newtype Figure p = MkFigure (Image PixelRGB8)
 -- | This typeclass allows flexibility in the tileset used for approximating
 -- pixels - there are some tileset instances provided out-of-the-box, but
 -- this can be extended as needed by library users.
-class Palette p where
-    -- | This type family is injective, in order to not force the user into
-    -- providing Proxy values.
-    type Object p = r | r -> p
-    name :: Object p -> Text
-    colour :: Object p -> PixelRGB8
-    asJson :: Object p -> Json.Object
-    categorize :: Object p -> Category
-    nearest :: PixelRGB8 -> Object p
-    getName :: Text -> Maybe (Object p)
-    getColour :: PixelRGB8 -> Maybe (Object p)
+class Palette obj where
+    name :: obj -> Text
+    colour :: obj -> PixelRGB8
+    asJson :: obj -> Json.Object
+    categorize :: obj -> Category
+    nearest :: PixelRGB8 -> obj
+    getName :: Text -> Maybe obj
+    getColour :: PixelRGB8 -> Maybe obj
 
 -- | Wrap up an 'Image' into a 'Figure' - this is just a newtype wrapper
 -- (so has no runtime impact), but it allows us to keep track of the colour
