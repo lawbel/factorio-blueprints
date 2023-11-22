@@ -42,14 +42,14 @@ data Format = Str | Json
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Set
-    = TileBase  -- ^ base game, flooring only
-    | AllBase  -- ^ base game, everything (flooring & entities)
-    | TileKras  -- ^ krastorio, flooring only
-    | AllKras  -- ^ krastorio, everything (flooring & entities)
-    | TileDect  -- ^ dectorio, flooring
+    = TileBase  -- ^ base game, tiles only
+    | AllBase   -- ^ base game, everything (tiles & entities)
+    | TileKras  -- ^ krastorio, tiles only
+    | AllKras   -- ^ krastorio, everything (tiles & entities)
+    | TileDect  -- ^ dectorio, tiles
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data Dither = Fs | Mae | Atkins
+data Dither = FS | MAE | Atkins
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Resize = Width Int | Height Int | Scale Float
@@ -95,7 +95,6 @@ parseArgs = do
         , Opt.help
             "print the blueprint in the given format - one of {str, json}"
         , Opt.value Nothing ]
-    let readDither = readTitle >>> fmap Just
     dither <- Opt.option (Opt.eitherReader readDither) $ mconcat
         [ Opt.long "dither"
         , Opt.short 'd'
@@ -127,9 +126,16 @@ readSet = \case
     "tile-base" -> Right TileBase
     "tile-dect" -> Right TileDect
     "tile-kras" -> Right TileKras
-    "all-base" -> Right AllBase
-    "all-kras" -> Right AllKras
-    txt -> Left [i|'#{txt}' is not a valid set|]
+    "all-base"  -> Right AllBase
+    "all-kras"  -> Right AllKras
+    txt         -> Left [i|'#{txt}' is not a valid set|]
+
+readDither :: String -> Either String Dither
+readDither = \case
+    "fs"     -> Right FS
+    "mae"    -> Right MAE
+    "atkins" -> Right Atkins
+    txt      -> Left [i|'#{txt}' is not a valid dithering method|]
 
 encodeOsPath :: String -> Either String OsPath
 encodeOsPath = OsPath.encodeUtf >>> first show
@@ -166,8 +172,8 @@ run MkArgs{image, set, output, preview, dither, resize} = do
 
 applyDither :: Palette p => Dither -> Figure p -> Figure p
 applyDither = \case
-    Fs -> Factorio.ditherFS
-    Mae -> Factorio.ditherMAE
+    FS     -> Factorio.ditherFS
+    MAE    -> Factorio.ditherMAE
     Atkins -> Factorio.ditherAtkinson
 
 applyResize :: Resize -> Image PixelRGB8 -> Image PixelRGB8
@@ -192,8 +198,8 @@ applyResize resize image = case resize of
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
-    AllBase -> cont $ Proxy @Base.All
-    AllKras -> cont $ Proxy @Krastorio.All
+    AllBase  -> cont $ Proxy @Base.All
+    AllKras  -> cont $ Proxy @Krastorio.All
     TileBase -> cont $ Proxy @Base.Tile
     TileKras -> cont $ Proxy @Krastorio.AllTile
     TileDect -> cont $ Proxy @Dectorio.AllTile
