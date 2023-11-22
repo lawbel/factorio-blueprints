@@ -17,11 +17,13 @@ import Codec.Factorio.Krastorio qualified as Krastorio
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Extra (scaleBilinear)
+import Codec.Picture.Types qualified as Picture.Type
 import Control.Applicative (asum)
 import Control.Arrow ((>>>))
 import Data.Aeson qualified as Json
 import Data.Aeson.Encode.Pretty qualified as Json.Pretty
 import Data.Bifunctor (first)
+import Data.ByteString (ByteString)
 import Data.ByteString qualified as Bytes
 import Data.Char qualified as Char
 import Data.Foldable (for_)
@@ -76,9 +78,7 @@ parseArgs = do
         [ Opt.long "preview"
         , Opt.short 'p'
         , Opt.metavar "FILE"
-        , Opt.help
-            "output a preview of the blueprint to the given file, in \
-            \PNG format"
+        , Opt.help "output a preview of the blueprint to the given file"
         , Opt.value Nothing ]
     set <- Opt.option (Opt.eitherReader readSet) $ mconcat
         [ Opt.long "set"
@@ -218,7 +218,19 @@ prettyPrintJson =
         >>> Text.Lazy.toStrict
         >>> Text.IO.putStrLn
 
+-- | Can fail if the given 'OsPath' has an unrecognised extension.
 writePreview :: Figure p -> OsPath -> IO ()
 writePreview (Factorio.MkFigure image) path = do
-    let bytes = Bytes.toStrict $ Picture.encodePng image
+    extension <- OsPath.decodeUtf $ OsPath.takeExtension path
+    let bytes = encodeExtension extension image
     File.OsPath.writeFile' path bytes
+
+encodeExtension :: String -> Image PixelRGB8 -> ByteString
+encodeExtension = \case
+    ".bmp"  -> Picture.encodeBitmap >>> Bytes.toStrict
+    ".png"  -> Picture.encodePng >>> Bytes.toStrict
+    ".jpg"  -> encodeJpeg >>> Bytes.toStrict
+    ".jpeg" -> encodeJpeg >>> Bytes.toStrict
+    ext     -> error [i|unsupported image type '#{ext}'|]
+  where
+    encodeJpeg = Picture.Type.convertImage >>> Picture.encodeJpeg
