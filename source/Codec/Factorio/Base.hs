@@ -10,8 +10,8 @@ module Codec.Factorio.Base
     , tileColours
       -- * Entities
     , Entity(..)
-    , entityName
-    , entityColour
+    , entityNames
+    , entityColours
       -- * Everything
     , All(..)
     ) where
@@ -68,10 +68,10 @@ tileColours = Map.fromList $ fmap (id &&& colour) [minBound .. maxBound]
         Refined  -> Picture.PixelRGB8 0x31 0x31 0x29
 
 instance Palette Entity where
-    name = Help.forwards entityName
-    getName = Help.backwards entityName
-    colour = Help.forwards entityColour
-    getColour = Help.backwards entityColour
+    name = Help.forwards entityNames
+    getName = Help.backwards entityNames
+    colour = Help.forwards entityColours
+    getColour = Help.backwards entityColours
     asJson = \case
         Wall -> Json.Map.fromList
             [ "name" .= Factorio.name Wall ]
@@ -81,15 +81,15 @@ instance Palette Entity where
     categorize _ = Factorio.Entity
     nearest = Help.closestTo Factorio.colour [minBound .. maxBound]
 
-entityName :: Map Entity Text
-entityName = Map.fromList $ fmap (id &&& name) [minBound .. maxBound]
+entityNames :: Map Entity Text
+entityNames = Map.fromList $ fmap (id &&& name) [minBound .. maxBound]
   where
     name = \case
         Wall -> "stone-wall"
         Gate -> "gate"
 
-entityColour :: Map Entity PixelRGB8
-entityColour = Map.fromList $ fmap (id &&& colour) [minBound .. maxBound]
+entityColours :: Map Entity PixelRGB8
+entityColours = Map.fromList $ fmap (id &&& colour) [minBound .. maxBound]
   where
     colour = \case
         Wall -> Picture.PixelRGB8 0xCE 0xDB 0xCE
