@@ -49,7 +49,7 @@ data Set
     | TileDect  -- ^ dectorio, tiles
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data Dither = FS | MAE | Atkins
+data Dither = FS | MAE | Atkinson | NoDither
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Resize = Width Int | Height Int | Scale Float
@@ -58,7 +58,7 @@ data Resize = Width Int | Height Int | Scale Float
 data Args = MkArgs
     { image :: OsPath
     , set :: Set
-    , dither :: Maybe Dither
+    , dither :: Dither
     , output :: Maybe Format
     , preview :: Maybe OsPath
     , resize :: Maybe Resize }
@@ -101,8 +101,9 @@ parseArgs = do
         , Opt.metavar "METHOD"
         , Opt.help
             "how (if at all) to dither the preview image - one of \
-            \{fs, mae, atkins}, or omit option to not apply dithering"
-        , Opt.value Nothing ]
+            \{fs, mae, atkin, none}"
+        , Opt.value NoDither
+        , Opt.showDefaultWith (const "none") ]
     resize <- asum
         [ fmap (Width >>> Just) $ Opt.option Opt.auto $ mconcat
             [ Opt.long "width"
@@ -132,10 +133,11 @@ readSet = \case
 
 readDither :: String -> Either String Dither
 readDither = \case
-    "fs"     -> Right FS
-    "mae"    -> Right MAE
-    "atkins" -> Right Atkins
-    txt      -> Left [i|'#{txt}' is not a valid dithering method|]
+    "fs"    -> Right FS
+    "mae"   -> Right MAE
+    "atkin" -> Right Atkinson
+    "none"  -> Right NoDither
+    txt     -> Left [i|'#{txt}' is not a valid dithering method|]
 
 encodeOsPath :: String -> Either String OsPath
 encodeOsPath = OsPath.encodeUtf >>> first show
@@ -164,17 +166,17 @@ run MkArgs{image, set, output, preview, dither, resize} = do
         Left err -> die err
         Right file -> withSet set $ \(Proxy @p) -> do
             let sized = maybe id applyResize resize $ Picture.convertRGB8 file
-            let process = maybe Factorio.quantize applyDither dither
-            let processed = process $ Factorio.setPalette @p sized
-            let json = Factorio.toJson processed
+            let dithered = applyDither dither $ Factorio.setPalette @p sized
+            let json = Factorio.toJson dithered
             for_ output $ printAs json
-            for_ preview $ writePreview processed
+            for_ preview $ writePreview dithered
 
 applyDither :: Palette p => Dither -> Figure p -> Figure p
 applyDither = \case
-    FS     -> Factorio.ditherFS
-    MAE    -> Factorio.ditherMAE
-    Atkins -> Factorio.ditherAtkinson
+    FS       -> Factorio.ditherFS
+    MAE      -> Factorio.ditherMAE
+    Atkinson -> Factorio.ditherAtkinson
+    NoDither -> Factorio.quantize
 
 applyResize :: Resize -> Image PixelRGB8 -> Image PixelRGB8
 applyResize resize image = case resize of
