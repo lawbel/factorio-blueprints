@@ -11,8 +11,9 @@ module Main
 
 import Codec.Factorio (Figure, Palette)
 import Codec.Factorio qualified as Factorio
-import Codec.Factorio.Krastorio qualified as Krastorio
 import Codec.Factorio.Base qualified as Base
+import Codec.Factorio.Dectorio qualified as Dectorio
+import Codec.Factorio.Krastorio qualified as Krastorio
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Extra (scaleBilinear)
@@ -43,8 +44,9 @@ data Format = Str | Json
 data Set
     = TileBase  -- ^ base game, flooring only
     | AllBase  -- ^ base game, everything (flooring & entities)
-    | TileKr  -- ^ krastorio, flooring only
-    | AllKr  -- ^ krastorio, everything (flooring & entities)
+    | TileKras  -- ^ krastorio, flooring only
+    | AllKras  -- ^ krastorio, everything (flooring & entities)
+    | TileDect  -- ^ dectorio, flooring
     deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Dither = Fs | Mae | Atkins
@@ -83,7 +85,7 @@ parseArgs = do
         , Opt.metavar "SET"
         , Opt.help
             "the tileset/palette to use - should be one of \
-            \{tile-base, tile-kr, all-base, all-kr}"
+            \{tile-base, tile-kras, tile-dect, all-base, all-kras}"
         , Opt.value AllBase ]
     let readFormat = readTitle >>> fmap Just
     output <- Opt.option (Opt.eitherReader readFormat) $ mconcat
@@ -123,9 +125,10 @@ parseArgs = do
 readSet :: String -> Either String Set
 readSet = \case
     "tile-base" -> Right TileBase
-    "tile-kr" -> Right TileKr
+    "tile-dect" -> Right TileDect
+    "tile-kras" -> Right TileKras
     "all-base" -> Right AllBase
-    "all-kr" -> Right AllKr
+    "all-kras" -> Right AllKras
     txt -> Left [i|'#{txt}' is not a valid set|]
 
 encodeOsPath :: String -> Either String OsPath
@@ -189,10 +192,11 @@ applyResize resize image = case resize of
 
 withSet :: Set -> (forall p. Palette p => Proxy p -> a) -> a
 withSet set cont = case set of
-    TileBase -> cont $ Proxy @Base.Tile
     AllBase -> cont $ Proxy @Base.All
-    TileKr -> cont $ Proxy @Krastorio.AllTile
-    AllKr -> cont $ Proxy @Krastorio.All
+    AllKras -> cont $ Proxy @Krastorio.All
+    TileBase -> cont $ Proxy @Base.Tile
+    TileKras -> cont $ Proxy @Krastorio.AllTile
+    TileDect -> cont $ Proxy @Dectorio.AllTile
 
 printAs :: Json.Value -> Format -> IO ()
 printAs json = \case

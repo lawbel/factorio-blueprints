@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -8,6 +7,10 @@ module Codec.Factorio.Base
       Tile(..)
     , tileNames
     , tileColours
+      -- * Hazard concrete
+    , Hazard(..)
+    , hazardNames
+    , hazardColours
       -- * Entities
     , Entity(..)
     , entityNames
@@ -24,13 +27,15 @@ import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
 import Control.Arrow ((&&&))
 import Data.Aeson ((.=))
-import Data.Aeson qualified as Json
 import Data.Aeson.KeyMap qualified as Json.Map
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 
 data Tile = Stone | Concrete | Refined
+    deriving stock (Bounded, Enum, Eq, Ord, Read, Show)
+
+data Hazard = HazardConcrete | HazardRefined
     deriving stock (Bounded, Enum, Eq, Ord, Read, Show)
 
 data Entity = Wall | Gate
@@ -67,17 +72,35 @@ tileColours = Map.fromList $ fmap (id &&& colour) [minBound .. maxBound]
         Concrete -> Picture.PixelRGB8 0x3A 0x3D 0x3A
         Refined  -> Picture.PixelRGB8 0x31 0x31 0x29
 
+instance Palette Hazard where
+    name = Help.forwards hazardNames
+    getName = Help.backwards hazardNames
+    colour = Help.forwards hazardColours
+    getColour = Help.backwards hazardColours
+    asJson object = Json.Map.fromList ["name" .= Factorio.name object]
+    categorize _ = Factorio.Tile
+    nearest = Help.closestTo Factorio.colour [minBound .. maxBound]
+
+hazardNames :: Map Hazard Text
+hazardNames = Map.fromList $ fmap (id &&& name) [minBound .. maxBound]
+  where
+    name = \case
+        HazardConcrete -> "hazard-concrete-left"
+        HazardRefined  -> "refined-hazard-concrete-left"
+
+hazardColours :: Map Hazard PixelRGB8
+hazardColours = Map.fromList $ fmap (id &&& colour) [minBound .. maxBound]
+  where
+    colour = \case
+        HazardConcrete -> Picture.PixelRGB8 0xB5 0x8E 0x21
+        HazardRefined  -> Picture.PixelRGB8 0x73 0x5D 0x19
+
 instance Palette Entity where
     name = Help.forwards entityNames
     getName = Help.backwards entityNames
     colour = Help.forwards entityColours
     getColour = Help.backwards entityColours
-    asJson = \case
-        Wall -> Json.Map.fromList
-            [ "name" .= Factorio.name Wall ]
-        Gate -> Json.Map.fromList
-            [ "name" .= Factorio.name Gate
-            , "direction" .= Json.Number 1 ]
+    asJson object = Json.Map.fromList ["name" .= Factorio.name object]
     categorize _ = Factorio.Entity
     nearest = Help.closestTo Factorio.colour [minBound .. maxBound]
 

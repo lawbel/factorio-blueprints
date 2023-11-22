@@ -26,6 +26,7 @@ library
         , Codec.Factorio
         , Codec.Factorio.Helpers
         , Codec.Factorio.Base
+        , Codec.Factorio.Dectorio
         , Codec.Factorio.Krastorio
     build-depends:
         , aeson ^>= 2.1.2
