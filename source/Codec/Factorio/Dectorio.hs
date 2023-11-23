@@ -29,7 +29,7 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 
 $( do  -- generate a large datatype, and some helper functions
-    info <- Help.loadDectInfo
+    info <- Help.loadDectCsv
     declType <- Help.declDectType "NewTile" info
     declNameFn <- Help.declDectFn "newTileName" Help.identifier info
     declColourFn <- Help.declDectFn "newTileColour" Help.rgb info

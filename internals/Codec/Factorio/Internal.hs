@@ -38,7 +38,7 @@ module Codec.Factorio.Internal
     , getDataFilePath
     , DectorioInfo(..)
       -- * template haskell
-    , loadDectInfo
+    , loadDectCsv
     , declDectType
     , declDectFn
     ) where
@@ -238,8 +238,8 @@ getDataFilePath = OsPath.decodeUtf >=> getDataFileName >=> OsPath.encodeUtf
 
 -- | Read and parse @data/dectorio.csv@. Skip over any row whose
 -- 'rgb' is a repeat from an earlier row.
-loadDectInfo :: Q [DectorioInfo]
-loadDectInfo = do
+loadDectCsv :: Q [DectorioInfo]
+loadDectCsv = do
     csvPath <- TH.runIO $ getDataFilePath [osp|data/dectorio.csv|]
     csvBytes <- TH.runIO $ File.OsPath.readFile csvPath
     let info = either error snd $ Csv.decodeByName csvBytes
