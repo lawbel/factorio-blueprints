@@ -5,6 +5,7 @@ Converts images into pixel-art blueprints for the game [Factorio][factorio].
 Table of Contents:
 
 - [Example](#example)
+- [Output](#output)
 - [Executable](#executable)
 - [Blueprint Reference](#blueprint-reference)
 
@@ -13,7 +14,7 @@ Table of Contents:
 Input image (taken by the James Webb Space Telescope, found [here][jw-link],
 and used as per their [usage policy][jw-usage]):
 
-![James Webb Input Image](data/jw-orig.png)
+![Input Image](data/jw-orig.png)
 
 Command to run:
 
@@ -26,27 +27,38 @@ $ cabal run blueprints -- \
     --dither atkin
 ```
 
-Output Image:
+Output image:
 
-![James Webb Output Image](data/jw-output.png)
+![Output Image Dectorio](data/jw-output-dect.png)
 
 As you may guess, this particular combination of input image and tileset
-(`tile-dect`, the [Dectorio][dectorio] tileset) happen to work particularly
-well together. This is because the colour palette of the original image was
-well-covered by the specified tileset.
+(`--set tile-dect`, the [Dectorio][dectorio] tileset) happen to work
+rather well together. This is because the colour palette of the original
+image was well-covered by the specified tileset.
 
 Results may not be so good when the tileset we are using is limited or is
 missing any colours close to important ones that are present in large
 amounts - there is a fundamental limit on how good our approximations can
-be with limited and predefined colours available. Dithering certainly helps
-to interpolate colours (as shown above, using Atkinson dithering
-with `--dither atkin`), but if colours would need to be extrapolated that
-can be a problem.
+be with limited and fixed colours available.
 
-Below is also a snippet of the output JSON, for the curious. This is how the
-blueprint is structured internally in-game. This output can be obtained by
-adding `--output json` as an option on the command line, which will then
-print this JSON to stdout.
+Dithering helps a lot to interpolate colours and avoid colour banding (at the
+cost of adding some noise). The above image used Atkinson dithering
+with `--dither atkin`, if we omit that option to turn all dithering off it
+looks like this instead:
+
+![Output Image Dectorio](data/jw-output-dect-no-dither.png)
+
+For another comparison, here is the same image run with dithering and using
+the vanilla/base-game tileset `--set all-base`, which is (roughly) monochrome:
+
+![Output Image Base](data/jw-output-base.png)
+
+## Output
+
+Continuing on with the same example as above, here is a snippet of the
+output JSON. This is how the blueprint is structured internally in-game.
+This output can be obtained by adding `--output json` as an option on the
+command line, which will then print this JSON to stdout.
 
 ```json
 {
@@ -96,8 +108,7 @@ Usage:
 Available options:
   -h,--help                Show this help text
   -i,--image FILE          the input image to use
-  -p,--preview FILE        output a preview of the blueprint to the given file,
-                           in PNG format
+  -p,--preview FILE        output a preview of the blueprint to the given file
   --set SET                the tileset/palette to use - should be one of
                            {tile-base, tile-kras, tile-dect, all-base, all-kras}
   -o,--output FORMAT       print the blueprint in the given format - one of
