@@ -16,8 +16,8 @@ module Codec.Factorio.Krastorio
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Base qualified as Base
-import Codec.Factorio.Helpers (EitherIsEnum, EitherIsBounded)
-import Codec.Factorio.Helpers qualified as Help
+import Codec.Factorio.Internal (EitherIsEnum, EitherIsBounded)
+import Codec.Factorio.Internal qualified as Help
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
 import Control.Arrow ((&&&))

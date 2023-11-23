@@ -12,7 +12,7 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Codec.Factorio.Helpers
+module Codec.Factorio.Internal
     ( -- * Compression
       decompress
       -- * Pixels

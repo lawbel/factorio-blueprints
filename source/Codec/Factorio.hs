@@ -26,7 +26,7 @@ module Codec.Factorio
 
 import Codec.Compression.Zlib qualified as ZLib
 import Codec.Compression.Zlib.Internal (DecompressError)
-import Codec.Factorio.Helpers qualified as Help
+import Codec.Factorio.Internal qualified as Help
 import Codec.Picture (Image, PixelRGB8)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Types qualified as Picture.Type

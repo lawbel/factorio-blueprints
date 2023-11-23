@@ -21,8 +21,8 @@ module Codec.Factorio.Base
 
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
-import Codec.Factorio.Helpers (EitherIsBounded, EitherIsEnum)
-import Codec.Factorio.Helpers qualified as Help
+import Codec.Factorio.Internal (EitherIsBounded, EitherIsEnum)
+import Codec.Factorio.Internal qualified as Help
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
 import Control.Arrow ((&&&))
