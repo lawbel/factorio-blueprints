@@ -28,7 +28,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 
-$( do
+$( do  -- generate a large datatype, and some helper functions
     info <- Help.loadDectInfo
     declType <- Help.declDectType "NewTile" info
     declNameFn <- Help.declDectFn "newTileName" Help.identifier info
