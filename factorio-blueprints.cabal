@@ -13,6 +13,9 @@ extra-doc-files:
     , data/jw-orig.png
     , data/jw-output.png
 
+data-files:
+    , data/dectorio.csv
+
 common warnings
     ghc-options: -Wall
 
@@ -30,17 +33,24 @@ library
         , Codec.Factorio.Base
         , Codec.Factorio.Dectorio
         , Codec.Factorio.Krastorio
+    other-modules:
+        , Paths_factorio_blueprints
     build-depends:
         , aeson ^>= 2.1.2
         , aeson-pretty ^>= 0.8.10
         , base ^>= 4.17.2
         , base64 ^>= 0.4.2
         , bytestring ^>= 0.11.5
+        , cassava ^>= 0.5.3
         , containers ^>= 0.6.7
+        , file-io ^>= 0.1.0
+        , filepath ^>= 1.4.100
         , JuicyPixels ^>= 3.3.8
         , matrix ^>= 0.3.6
         , primitive ^>= 0.7.4
+        , template-haskell ^>= 2.19.0
         , text ^>= 2.0.2
+        , vector ^>= 0.13.0
         , zlib ^>= 0.6.3
     hs-source-dirs: source
 
@@ -67,8 +77,8 @@ executable blueprints
         , base
         , bytestring
         , factorio-blueprints
-        , file-io ^>= 0.1.0
-        , filepath ^>= 1.4.100
+        , file-io
+        , filepath
         , JuicyPixels
         , JuicyPixels-extra ^>= 0.6.0
         , optparse-applicative ^>= 0.18.1

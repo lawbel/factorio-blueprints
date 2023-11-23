@@ -1,6 +1,16 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
+
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Codec.Factorio.Helpers
     ( -- * Compression
@@ -24,6 +34,13 @@ module Codec.Factorio.Helpers
       -- * Deriving Via
     , EitherIsBounded(..)
     , EitherIsEnum(..)
+      -- * data files
+    , getDataFilePath
+    , DectorioInfo(..)
+      -- * template haskell
+    , loadDectInfo
+    , declDectType
+    , declDectFn
     ) where
 
 import Codec.Compression.Zlib qualified as ZLib
@@ -32,10 +49,14 @@ import Codec.Compression.Zlib.Internal qualified as ZLib.Internal
 import Codec.Picture (PixelRGB8, Pixel)
 import Codec.Picture qualified as Picture
 import Codec.Picture.Types (MutableImage)
+import Control.Applicative (empty)
 import Control.Arrow ((>>>))
+import Control.Monad ((>=>))
 import Control.Monad.Primitive (PrimMonad, PrimState)
 import Data.ByteString.Builder qualified as Builder
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
+import Data.Containers.ListUtils (nubOrdOn)
+import Data.Csv qualified as Csv
 import Data.Functor ((<&>))
 import Data.List qualified as List
 import Data.Map (Map)
@@ -44,7 +65,43 @@ import Data.Matrix (Matrix)
 import Data.Matrix qualified as Matrix
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
+import Data.Text (Text)
+import Data.Vector qualified as Vec
 import Data.Word (Word8)
+import GHC.Generics (Generic)
+import Language.Haskell.TH (Q, Dec)
+import Language.Haskell.TH qualified as TH
+import Language.Haskell.TH.Syntax (Lift, lift)
+import Numeric (readHex)
+import Paths_factorio_blueprints (getDataFileName)
+import System.File.OsPath qualified as File.OsPath
+import System.OsPath (OsPath, osp)
+import System.OsPath qualified as OsPath
+
+-- | The mix of 'String' and 'Text' is messy, but 'constructor' needs to
+-- be a String in order to use with template haskell.
+data DectorioInfo = MkDectorioInfo
+    { constructor :: String
+    , identifier :: Text
+    , rgb :: PixelRGB8 }
+    deriving stock (Eq, Generic, Ord, Show)
+    deriving anyclass Csv.FromNamedRecord
+
+deriving stock instance Lift PixelRGB8
+
+instance Csv.FromField PixelRGB8 where
+    parseField bytes = Csv.parseField bytes >>= \case
+        ['#', r1, r2, g1, g2, b1, b2] -> do
+            red   <- runReadS [r1, r2] readHex
+            green <- runReadS [g1, g2] readHex
+            blue  <- runReadS [b1, b2] readHex
+            pure $ Picture.PixelRGB8 red green blue
+        _ -> empty
+
+runReadS :: String -> ReadS a -> Csv.Parser a
+runReadS str readS = case readS str of
+    [(x, "")] -> pure x
+    _         -> empty
 
 -- | Alternate version of 'ZLib.decompress' which explicitly returns
 -- any errors.
@@ -175,3 +232,51 @@ instance (Enum a, Enum b, Bounded a) => Enum (EitherIsEnum a b) where
         MkEitherIsEnum (Right y) -> fromEnum y + numLeft
       where
         numLeft = fromEnum (maxBound @a) + 1
+
+getDataFilePath :: OsPath -> IO OsPath
+getDataFilePath = OsPath.decodeUtf >=> getDataFileName >=> OsPath.encodeUtf
+
+-- | Read and parse @data/dectorio.csv@. Skip over any row whose
+-- 'rgb' is a repeat from an earlier row.
+loadDectInfo :: Q [DectorioInfo]
+loadDectInfo = do
+    csvPath <- TH.runIO $ getDataFilePath [osp|data/dectorio.csv|]
+    csvBytes <- TH.runIO $ File.OsPath.readFile csvPath
+    let info = either error snd $ Csv.decodeByName csvBytes
+    pure $ nubOrdOn rgb $ Vec.toList info
+
+-- | Defines
+--
+-- @
+-- data DataType = A | B | ...
+--     deriving (Bounded, Enum, Eq, Ord, Read, Show)
+-- @
+--
+-- where the constructor names {A, B, ...} are taken from the 'constructor'
+-- column.
+declDectType :: String -> [DectorioInfo] -> Q Dec
+declDectType typeName allInfo =
+    TH.dataD (TH.cxt []) (TH.mkName typeName) [] Nothing constrs derives
+  where
+    derives = pure $ TH.derivClause Nothing (TH.conT <$> classes)
+    classes = [''Bounded, ''Enum, ''Eq, ''Ord, ''Read, ''Show]
+    constrs = name <$> allInfo
+    name = constructor >>> TH.mkName >>> flip TH.normalC []
+
+-- | Defines
+--
+-- @
+-- function :: DataType -> Text
+-- function = ...
+-- @
+--
+-- where the function has a clause for each row in the CSV,
+-- mapping 'constructor' to 'identifier'.
+declDectFn
+    :: Lift a => String -> (DectorioInfo -> a) -> [DectorioInfo] -> Q Dec
+declDectFn fnName extract allInfo =
+    TH.funD (TH.mkName fnName) $ do
+        info <- allInfo
+        let lhs = TH.conP (TH.mkName $ constructor info) []
+        let rhs = TH.normalB $ lift $ extract info
+        pure $ TH.clause [lhs] rhs []
