@@ -21,7 +21,7 @@ module Codec.Factorio.Base
 
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
-import Codec.Factorio.Internal (EitherIsBounded, EitherIsEnum)
+import Codec.Factorio.Internal (EitherBounded, EitherEnum)
 import Codec.Factorio.Internal qualified as Help
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
@@ -44,8 +44,8 @@ data Entity = Wall | Gate
 newtype All = MkAll (Either Tile Entity)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
-    deriving Bounded via EitherIsBounded Tile Entity
-    deriving Enum via EitherIsEnum Tile Entity
+    deriving Bounded via EitherBounded Tile Entity
+    deriving Enum via EitherEnum Tile Entity
 
 instance Palette Tile where
     name = Help.forwards tileNames

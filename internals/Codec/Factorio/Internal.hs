@@ -32,8 +32,8 @@ module Codec.Factorio.Internal
     , positions
     , positionsAfter
       -- * Deriving Via
-    , EitherIsBounded(..)
-    , EitherIsEnum(..)
+    , EitherBounded(..)
+    , EitherEnum(..)
       -- * data files
     , getDataFilePath
     , DectorioInfo(..)
@@ -210,26 +210,26 @@ addPixel (r1, g1, b1) (Picture.PixelRGB8 r2 g2 b2) =
     i2w = min max8 >>> max 0 >>> fromIntegral @Int @Word8
     max8 = w2i $ maxBound @Word8
 
-newtype EitherIsBounded a b = MkEitherIsBounded (Either a b)
+newtype EitherBounded a b = MkEitherBounded (Either a b)
     deriving (Eq, Ord, Show, Read)
 
-instance (Bounded a, Bounded b) => Bounded (EitherIsBounded a b) where
-    minBound = MkEitherIsBounded $ Left minBound
-    maxBound = MkEitherIsBounded $ Right maxBound
+instance (Bounded a, Bounded b) => Bounded (EitherBounded a b) where
+    minBound = MkEitherBounded $ Left minBound
+    maxBound = MkEitherBounded $ Right maxBound
 
-newtype EitherIsEnum a b = MkEitherIsEnum (Either a b)
+newtype EitherEnum a b = MkEitherEnum (Either a b)
     deriving (Eq, Ord, Show, Read)
 
-instance (Enum a, Enum b, Bounded a) => Enum (EitherIsEnum a b) where
+instance (Enum a, Enum b, Bounded a) => Enum (EitherEnum a b) where
     toEnum n
         | n < 0 = error "bad argument"
-        | n < numLeft = MkEitherIsEnum $ Left $ toEnum n
-        | otherwise = MkEitherIsEnum $ Right $ toEnum (n - numLeft)
+        | n < numLeft = MkEitherEnum $ Left $ toEnum n
+        | otherwise = MkEitherEnum $ Right $ toEnum (n - numLeft)
       where
         numLeft = fromEnum (maxBound @a) + 1
     fromEnum = \case
-        MkEitherIsEnum (Left x) -> fromEnum x
-        MkEitherIsEnum (Right y) -> fromEnum y + numLeft
+        MkEitherEnum (Left x) -> fromEnum x
+        MkEitherEnum (Right y) -> fromEnum y + numLeft
       where
         numLeft = fromEnum (maxBound @a) + 1
 

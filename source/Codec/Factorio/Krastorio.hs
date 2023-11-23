@@ -16,7 +16,7 @@ module Codec.Factorio.Krastorio
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Base qualified as Base
-import Codec.Factorio.Internal (EitherIsEnum, EitherIsBounded)
+import Codec.Factorio.Internal (EitherEnum, EitherBounded)
 import Codec.Factorio.Internal qualified as Help
 import Codec.Picture (PixelRGB8)
 import Codec.Picture qualified as Picture
@@ -33,14 +33,14 @@ data NewTile = BlackReinforced | WhiteReinforced
 newtype AllTile = MkAllTile (Either Base.Tile NewTile)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
-    deriving Bounded via EitherIsBounded Base.Tile NewTile
-    deriving Enum via EitherIsEnum Base.Tile NewTile
+    deriving Bounded via EitherBounded Base.Tile NewTile
+    deriving Enum via EitherEnum Base.Tile NewTile
 
 newtype All = MkAll (Either AllTile Base.Entity)
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
-    deriving Bounded via EitherIsBounded AllTile Base.Entity
-    deriving Enum via EitherIsEnum AllTile Base.Entity
+    deriving Bounded via EitherBounded AllTile Base.Entity
+    deriving Enum via EitherEnum AllTile Base.Entity
 
 instance Palette NewTile where
     name = Help.forwards tileNames

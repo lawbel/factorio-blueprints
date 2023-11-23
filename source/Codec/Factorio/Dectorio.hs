@@ -19,7 +19,7 @@ module Codec.Factorio.Dectorio
 import Codec.Factorio (Palette)
 import Codec.Factorio qualified as Factorio
 import Codec.Factorio.Base qualified as Base
-import Codec.Factorio.Internal (EitherIsBounded, EitherIsEnum)
+import Codec.Factorio.Internal (EitherBounded, EitherEnum)
 import Codec.Factorio.Internal qualified as Help
 import Codec.Picture (PixelRGB8)
 import Data.Aeson ((.=))
@@ -39,9 +39,9 @@ newtype AllTile = MkTile (Either Base.Tile (Either Base.Hazard NewTile))
     deriving stock (Eq, Ord, Read, Show)
     deriving newtype Palette
     deriving Bounded via
-        EitherIsBounded Base.Tile (EitherIsBounded Base.Hazard NewTile)
+        EitherBounded Base.Tile (EitherBounded Base.Hazard NewTile)
     deriving Enum via
-        EitherIsEnum Base.Tile (EitherIsEnum Base.Hazard NewTile)
+        EitherEnum Base.Tile (EitherEnum Base.Hazard NewTile)
 
 instance Palette NewTile where
     name = Help.forwards tileNames
