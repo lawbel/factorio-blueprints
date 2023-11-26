@@ -12,6 +12,7 @@ extra-doc-files:
     , README.md
     , data/jw-orig.png
     , data/jw-output-base.png
+    , data/jw-output-kras.png
     , data/jw-output-dect.png
     , data/jw-output-dect-no-dither.png
 

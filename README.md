@@ -53,6 +53,12 @@ the vanilla/base-game tileset `--set all-base`, which is (roughly) monochrome:
 
 ![Output Image Base](data/jw-output-base.png)
 
+And finally here is another tileset  `--set all-kras` using the extra tiles
+from [Krastorio][krastorio], which makes for another (roughly) monochrome
+tileset with better lowlights and an extra midtone:
+
+![Output Image Base](data/jw-output-kras.png)
+
 ## Output
 
 Continuing on with the same example as above, here is a snippet of the
@@ -130,4 +136,5 @@ How the blueprint format works in all technical details is explained
 [jw-usage]: https://webbtelescope.org/copyright
 [wiki]: https://wiki.factorio.com/Blueprint_string_format
 [dectorio]: https://mods.factorio.com/mod/Dectorio
+[krastorio]: https://mods.factorio.com/mod/Krastorio2
 [factorio]: https://factorio.com/
