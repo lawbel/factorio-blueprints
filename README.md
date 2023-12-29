@@ -14,22 +14,28 @@ Table of Contents:
 Input image (taken by the James Webb Space Telescope, found [here][jw-link],
 and used as per their [usage policy][jw-usage]):
 
-![Input Image](data/jw-orig.png)
+![Input Image](data/original.png)
 
 Command to run:
 
 ```sh
-$ cabal run blueprints -- \
-    --image data/jw-orig.png \
-    --preview data/jw-output.png \
-    --height 200 \
-    --set tile-dect \
-    --dither atkin
+$ cabal run blueprints --         \
+    --image data/original.png     \
+    --height 200                  \
+    --set tile-dect               \
+    --dither atkin                \
+    --preview blueprint.png       \
+    --output str > blueprint.txt
 ```
 
-Output image:
+Output blueprint, shown in-game (on the minimap):
 
-![Output Image Dectorio](data/jw-output-dect.png)
+![Output Image - Minimap (Dectorio)](data/ingame-minimap.png)
+
+And here is how it looks like in the world, next to the player - here you
+can see the individual 'pixels' in the output:
+
+![Output Image - In Game (Dectorio)](data/ingame-player.png)
 
 As you may guess, this particular combination of input image and tileset
 (`--set tile-dect`, the [Dectorio][dectorio] tileset) happen to work
@@ -46,18 +52,18 @@ cost of adding some noise). The above image used Atkinson dithering
 with `--dither atkin`, if we omit that option to turn all dithering off it
 looks like this instead:
 
-![Output Image Dectorio](data/jw-output-dect-no-dither.png)
+![Output Image (Dectorio)](data/out-dect-no-dither.png)
 
 For another comparison, here is the same image run with dithering and using
 the vanilla/base-game tileset `--set all-base`, which is (roughly) monochrome:
 
-![Output Image Base](data/jw-output-base.png)
+![Output Image (Base)](data/out-base.png)
 
 And finally here is another tileset  `--set all-kras` using the extra tiles
 from [Krastorio][krastorio], which makes for another (roughly) monochrome
 tileset with better lowlights and an extra midtone:
 
-![Output Image Base](data/jw-output-kras.png)
+![Output Image (Krastorio)](data/out-kras.png)
 
 ## Output
 
@@ -87,7 +93,8 @@ command line, which will then print this JSON to stdout.
 
 Additionally here is a snippet of the blueprint string after encoding, as
 would be suitable for copy-pasting in-game. This can similarly be obtained by
-adding `--output str` on the command line.
+adding `--output str` on the command line, and is what most users will want
+to simply use the output in-game.
 
 ```
 0eNqkvduyHbexbfsvfl6KKCQSt/UrJ/YDlzxlMY5FKijKOvaK...

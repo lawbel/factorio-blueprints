@@ -10,11 +10,13 @@ build-type: Simple
 extra-doc-files:
     , CHANGELOG.md
     , README.md
-    , data/jw-orig.png
-    , data/jw-output-base.png
-    , data/jw-output-kras.png
-    , data/jw-output-dect.png
-    , data/jw-output-dect-no-dither.png
+    , data/original.png
+    , data/out-base.png
+    , data/out-kras.png
+    , data/out-dect.png
+    , data/out-dect-no-dither.png
+    , data/ingame-player.png
+    , data/ingame-minimap.png
 
 data-files:
     , data/dectorio.csv
