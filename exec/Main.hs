@@ -22,7 +22,6 @@ import Control.Applicative (asum)
 import Control.Arrow ((>>>))
 import Data.Aeson qualified as Json
 import Data.Aeson.Encode.Pretty qualified as Json.Pretty
-import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as Bytes
 import Data.Char qualified as Char
@@ -35,9 +34,7 @@ import Data.Text.Lazy.Builder qualified as Builder
 import Options.Applicative (Parser)
 import Options.Applicative qualified as Opt
 import System.Exit (die)
-import System.File.OsPath qualified as File.OsPath
-import System.OsPath (OsPath)
-import System.OsPath qualified as OsPath
+import System.FilePath qualified as FilePath
 import Text.Read (readEither)
 
 data Format = Str | Json
@@ -58,23 +55,22 @@ data Resize = Width Int | Height Int | Scale Float
     deriving (Eq, Ord, Read, Show)
 
 data Args = MkArgs
-    { image :: OsPath
+    { image :: FilePath
     , set :: Set
     , dither :: Dither
     , output :: Maybe Format
-    , preview :: Maybe OsPath
+    , preview :: Maybe FilePath
     , resize :: Maybe Resize }
     deriving (Eq, Ord, Show)
 
 parseArgs :: Parser Args
 parseArgs = do
-    image <- Opt.option (Opt.eitherReader encodeOsPath) $ mconcat
+    image <- Opt.strOption $ mconcat
         [ Opt.long "image"
         , Opt.short 'i'
         , Opt.metavar "FILE"
         , Opt.help "the input image to use" ]
-    let encodeJust = encodeOsPath >>> fmap Just
-    preview <- Opt.option (Opt.eitherReader encodeJust) $ mconcat
+    preview <- Opt.option (Just <$> Opt.str) $ mconcat
         [ Opt.long "preview"
         , Opt.short 'p'
         , Opt.metavar "FILE"
@@ -139,9 +135,6 @@ readDither = \case
     "none"  -> Right NoDither
     txt     -> Left [i|'#{txt}' is not a valid dithering method|]
 
-encodeOsPath :: String -> Either String OsPath
-encodeOsPath = OsPath.encodeUtf >>> first show
-
 titleCase :: String -> String
 titleCase = fmap Char.toLower >>> upperFirst
   where
@@ -161,7 +154,7 @@ main = Opt.execParser opts >>= run
 
 run :: Args -> IO ()
 run MkArgs{image, set, output, preview, dither, resize} = do
-    bytes <- File.OsPath.readFile' image
+    bytes <- Bytes.readFile image
     case Picture.decodeImage bytes of
         Left err -> die err
         Right file -> withSet set $ \(Proxy @p) -> do
@@ -218,12 +211,12 @@ prettyPrintJson =
         >>> Text.Lazy.toStrict
         >>> Text.IO.putStrLn
 
--- | Can fail if the given 'OsPath' has an unrecognised extension.
-writePreview :: Figure p -> OsPath -> IO ()
+-- | Can fail if the given 'FilePath' has an unrecognised extension.
+writePreview :: Figure p -> FilePath -> IO ()
 writePreview (Factorio.MkFigure image) path = do
-    extension <- OsPath.decodeUtf $ OsPath.takeExtension path
+    let extension = FilePath.takeExtension path
     let bytes = encodeExtension extension image
-    File.OsPath.writeFile' path bytes
+    Bytes.writeFile path bytes
 
 encodeExtension :: String -> Image PixelRGB8 -> ByteString
 encodeExtension = \case

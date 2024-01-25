@@ -35,7 +35,6 @@ module Codec.Factorio.Internal
     , EitherBounded(..)
     , EitherEnum(..)
       -- * data files
-    , getDataFilePath
     , DectorioInfo(..)
       -- * template haskell
     , loadDectCsv
@@ -51,9 +50,9 @@ import Codec.Picture qualified as Picture
 import Codec.Picture.Types (MutableImage)
 import Control.Applicative (empty)
 import Control.Arrow ((>>>))
-import Control.Monad ((>=>))
 import Control.Monad.Primitive (PrimMonad, PrimState)
 import Data.ByteString.Builder qualified as Builder
+import Data.ByteString.Lazy qualified as Bytes.Lazy
 import Data.ByteString.Lazy qualified as Lazy (ByteString)
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Csv qualified as Csv
@@ -74,9 +73,6 @@ import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Syntax (Lift, lift)
 import Numeric (readHex)
 import Paths_factorio_blueprints (getDataFileName)
-import System.File.OsPath qualified as File.OsPath
-import System.OsPath (OsPath, osp)
-import System.OsPath qualified as OsPath
 
 -- | The mix of 'String' and 'Text' is messy, but 'constructor' needs to
 -- be a String in order to use with template haskell.
@@ -233,15 +229,12 @@ instance (Enum a, Enum b, Bounded a) => Enum (EitherEnum a b) where
       where
         numLeft = fromEnum (maxBound @a) + 1
 
-getDataFilePath :: OsPath -> IO OsPath
-getDataFilePath = OsPath.decodeUtf >=> getDataFileName >=> OsPath.encodeUtf
-
 -- | Read and parse @data/dectorio.csv@. Skip over any row whose
 -- 'rgb' is a repeat from an earlier row.
 loadDectCsv :: Q [DectorioInfo]
 loadDectCsv = do
-    csvPath <- TH.runIO $ getDataFilePath [osp|data/dectorio.csv|]
-    csvBytes <- TH.runIO $ File.OsPath.readFile csvPath
+    csvPath <- TH.runIO $ getDataFileName "data/dectorio.csv"
+    csvBytes <- TH.runIO $ Bytes.Lazy.readFile csvPath
     let info = either error snd $ Csv.decodeByName csvBytes
     pure $ nubOrdOn rgb $ Vec.toList info
 

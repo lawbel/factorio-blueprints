@@ -61,7 +61,6 @@ library internals
         , bytestring ^>= 0.11.5
         , cassava ^>= 0.5.3
         , containers
-        , file-io ^>= 0.1.0
         , filepath ^>= 1.4.100
         , JuicyPixels
         , matrix
@@ -96,7 +95,6 @@ executable blueprints
         , base
         , bytestring
         , factorio-blueprints
-        , file-io
         , filepath
         , JuicyPixels
         , JuicyPixels-extra ^>= 0.6.0
