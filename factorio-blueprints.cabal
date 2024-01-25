@@ -37,46 +37,32 @@ library
         , Codec.Factorio.Base
         , Codec.Factorio.Dectorio
         , Codec.Factorio.Krastorio
+        , Codec.Factorio.Internal
+    other-modules:
+        , Paths_factorio_blueprints
     build-depends:
         , aeson ^>= 2.1.2
         , aeson-pretty ^>= 0.8.10
         , base ^>= 4.17.2
         , base64 ^>= 0.4.2
-        , containers ^>= 0.6.7
-        , internals
-        , JuicyPixels ^>= 3.3.8
-        , matrix ^>= 0.3.6
-        , text ^>= 2.0.2
-        , zlib ^>= 0.6.3
-    hs-source-dirs: source
-
-library internals
-    import: warnings, language-options
-    exposed-modules:
-        , Codec.Factorio.Internal
-    other-modules:
-        , Paths_factorio_blueprints
-    build-depends:
-        , base
         , bytestring ^>= 0.11.5
         , cassava ^>= 0.5.3
-        , containers
+        , containers ^>= 0.6.7
         , filepath ^>= 1.4.100
-        , JuicyPixels
-        , matrix
+        , JuicyPixels ^>= 3.3.8
+        , matrix ^>= 0.3.6
         , primitive ^>= 0.7.4
         , template-haskell ^>= 2.19.0
-        , text
+        , text ^>= 2.0.2
         , vector ^>= 0.13.0
-        , zlib
-    hs-source-dirs: internals
+        , zlib ^>= 0.6.3
+    hs-source-dirs: source
 
 test-suite tests
     import: warnings, language-options
     build-depends:
         , base
         , factorio-blueprints
-        , internals
         , JuicyPixels
         , QuickCheck ^>= 2.14.3
         , string-interpolate ^>= 0.3.2
