@@ -42,16 +42,16 @@ library
         , Paths_factorio_blueprints
     build-depends:
         , aeson ^>= 2.1.2
-        , aeson-pretty ^>= 0.8.10
+        , aeson-pretty ^>= 0.8.9
         , base ^>= 4.17.2
         , base64 ^>= 0.4.2
         , bytestring ^>= 0.11.5
         , cassava ^>= 0.5.3
         , containers ^>= 0.6.7
-        , filepath ^>= 1.4.100
+        , filepath ^>= 1.4.2
         , JuicyPixels ^>= 3.3.8
         , matrix ^>= 0.3.6
-        , primitive ^>= 0.7.4
+        , primitive ^>= 0.8.0
         , template-haskell ^>= 2.19.0
         , text ^>= 2.0.2
         , vector ^>= 0.13.0
@@ -66,9 +66,9 @@ test-suite tests
         , JuicyPixels
         , QuickCheck ^>= 2.14.3
         , string-interpolate ^>= 0.3.2
-        , tasty ^>= 1.5
+        , tasty ^>= 1.4.3
         , tasty-hunit ^>= 0.10.1
-        , tasty-quickcheck ^>= 0.10.3
+        , tasty-quickcheck ^>= 0.10.2
     main-is: Spec.hs
     type: exitcode-stdio-1.0
     hs-source-dirs: test
@@ -84,7 +84,7 @@ executable blueprints
         , filepath
         , JuicyPixels
         , JuicyPixels-extra ^>= 0.6.0
-        , optparse-applicative ^>= 0.18.1
+        , optparse-applicative ^>= 0.17.1
         , string-interpolate
         , text
     main-is: Main.hs
