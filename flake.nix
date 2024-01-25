@@ -6,7 +6,10 @@
   # we rely on "haskell-flake" to do the heavy lifting for the nix config
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
-    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
     haskell-flake.url = "github:srid/haskell-flake";
   };
 
